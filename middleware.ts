@@ -5,21 +5,14 @@ export function middleware(request: NextRequest) {
     const userId = request.cookies.get('userId')?.value;
     const { pathname } = request.nextUrl;
 
-    // Protect Dashboard
-    if (pathname.startsWith('/dashboard')) {
-        if (!userId) {
-            return NextResponse.redirect(new URL('/login', request.url));
-        }
-    }
-
-    // Redirect authenticated user from Login/Root to Dashboard
-    if ((pathname === '/login' || pathname === '/') && userId) {
+    // Always redirect root to dashboard (publicly accessible now)
+    if (pathname === '/') {
         return NextResponse.redirect(new URL('/dashboard', request.url));
     }
 
-    // Redirect root to login if not authenticated
-    if (pathname === '/' && !userId) {
-        return NextResponse.redirect(new URL('/login', request.url));
+    // Redirect authenticated user from Login to Dashboard
+    if (pathname === '/login' && userId) {
+        return NextResponse.redirect(new URL('/dashboard', request.url));
     }
 
     return NextResponse.next();

@@ -101,6 +101,15 @@ export default function LoginPage() {
                         {isLogin ? 'Create an account' : 'Sign in'}
                     </button>
                 </div>
+
+                <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+                    <button
+                        onClick={() => router.push('/')}
+                        style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.875rem', textDecoration: 'underline' }}
+                    >
+                        Cancel
+                    </button>
+                </div>
             </div>
         </div>
     );

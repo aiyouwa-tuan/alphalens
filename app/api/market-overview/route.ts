@@ -3,27 +3,47 @@ import { getQuotes } from '@/lib/price';
 
 export const dynamic = 'force-dynamic';
 
-const MARKET_SYMBOLS = [
-    'SPY', 'QQQ',
-    'AAPL', 'MSFT', 'GOOG', 'AMZN', 'NVDA', 'META', 'TSLA'
+const INDICES = {
+    US: ['^DJI', '^IXIC', '^GSPC'],
+    HK: ['^HSI', 'HSTECH.HK'],
+    CN: ['000001.SS', '000300.SS', '399006.SZ']
+};
+
+const ETFS = ['SPY', 'QQQ'];
+
+const STOCKS = [
+    'NVDA', 'TSM', 'AAPL', 'MSFT', 'GOOG', 'AMZN', 'META', 'TSLA'
 ];
 
 export async function GET() {
     try {
-        const data = await getQuotes(MARKET_SYMBOLS);
+        const allSymbols = [
+            ...INDICES.US,
+            ...INDICES.HK,
+            ...INDICES.CN,
+            ...ETFS,
+            ...STOCKS,
+            '^TNX'
+        ];
+
+        const data = await getQuotes(allSymbols);
+
+        // Sort stocks by market cap (descending)
+        const sortedStocks = STOCKS.map(sym => ({ symbol: sym, ...data[sym] }))
+            .sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
+
+        const etfData = ETFS.map(sym => ({ symbol: sym, ...data[sym] }));
+
         return NextResponse.json({
-            indices: [
-                { symbol: 'SPY', ...data['SPY'] },
-                { symbol: 'QQQ', ...data['QQQ'] }
-            ],
-            m7: [
-                { symbol: 'AAPL', ...data['AAPL'] },
-                { symbol: 'MSFT', ...data['MSFT'] },
-                { symbol: 'GOOG', ...data['GOOG'] },
-                { symbol: 'AMZN', ...data['AMZN'] },
-                { symbol: 'NVDA', ...data['NVDA'] },
-                { symbol: 'META', ...data['META'] },
-                { symbol: 'TSLA', ...data['TSLA'] }
+            indices: {
+                us: INDICES.US.map(sym => ({ symbol: sym, ...data[sym] })),
+                hk: INDICES.HK.map(sym => ({ symbol: sym, ...data[sym] })),
+                cn: INDICES.CN.map(sym => ({ symbol: sym, ...data[sym] }))
+            },
+            etfs: etfData,
+            stocks: sortedStocks,
+            rates: [
+                { symbol: '^TNX', name: 'US 10Y Yield', ...data['^TNX'] }
             ]
         });
     } catch (error) {

@@ -1,53 +1,38 @@
-# Deployment Guide: Zeabur
+# The Easiest Free Deployment (Vercel CLI)
 
-You have chosen to deploy to **Zeabur**.
+Since Zeabur was complicated or asked for payment, we will use **Vercel** directly. It is free and you don't need GitHub.
 
-> **CRITICAL: Fix Your Mac First**
-> You cannot deploy yet because your `git` command is broken.
-> You **MUST** run this in your terminal and follow the prompts:
-> ```bash
-> sudo xcodebuild -license
-> ```
-> 1. Type your computer password (it won't show on screen).
-> 2. Press **Space** repeatedly to scroll to the bottom.
-> 3. Type `agree` and press **Enter**.
+## One-Command Deployment
+
+1.  **Run this command in your terminal**:
+    ```bash
+    npx vercel
+    ```
+
+2.  **Answer the prompts**:
+    *   Set up and deploy? **y** (Yes)
+    *   Which scope? (Press **Enter** to accept default)
+    *   Link to existing project? **n** (No)
+    *   Project name? (Press **Enter**, or type `alphalens`)
+    *   In which directory? (Press **Enter**)
+    *   Want to modify settings? **n** (No)
+
+3.  **Wait for Upload**:
+    It will give you a "Production" URL (something like `https://alphalens-xyz.vercel.app`).
 
 ---
 
-## Deploying to Zeabur
+## IMPORTANT: Fix the Database & API
 
-Once `git` is fixed, follow these steps:
+After the command finishes, your site is online, **BUT** it won't have stock prices because it doesn't know your secrets (API Keys).
 
-### 1. Push Code to GitHub
-(Zeabur deploys directly from GitHub)
+1.  Go to the URL it gave you (e.g., `vercel.com/.../alphalens`).
+2.  Click **Settings** -> **Environment Variables**.
+3.  Add these 4 items (copy from your `.env.local` file):
+    *   `NEXT_PUBLIC_SUPABASE_URL`
+    *   `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+    *   `STOCK_API_URL_TEMPLATE`
+    *   `NEXT_PUBLIC_MARKET_API_KEY`
+4.  **Redeploy**: Go to **Deployments** tab -> Click the top one (three dots) -> **Redeploy**.
 
-run these commands in your terminal:
-```bash
-# Initialize Git
-git init
-git add .
-git commit -m "Initial commit"
-git branch -M main
-
-# Create a repo on GitHub.com (skip this if you have one)
-# Then link it:
-git remote add origin https://github.com/YOUR_USERNAME/alphalens.git
-git push -u origin main
-```
-
-### 2. Connect Zeabur
-1.  Go to [Zeabur.com](https://zeabur.com) and Login.
-2.  Click **"Create Project"**.
-3.  Click **"Deploy New Service"** -> **"GitHub"**.
-4.  Select your `alphalens` repository.
-5.  Zeabur will automatically detect it is a Next.js app.
-
-### 3. Add Environment Variables
-In the Zeabur Dashboard for your service, go to **"Settings"** -> **"Variables"** and add these (copy from your `.env.local` file):
-
-*   `NEXT_PUBLIC_SUPABASE_URL`
-*   `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-*   `STOCK_API_URL_TEMPLATE`
-*   `NEXT_PUBLIC_MARKET_API_KEY`
-
-Redeploy the service if needed.
+That's it! completely free.

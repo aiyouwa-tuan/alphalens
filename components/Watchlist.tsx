@@ -77,20 +77,20 @@ export default function Watchlist() {
     };
 
     return (
-        <div className="glass" style={{ borderRadius: 'var(--radius-md)', padding: '1.5rem', marginBottom: '2rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Watchlist</h2>
+        <div className="card">
+            <div className="card-header">
+                <span className="card-title">Watchlist</span>
             </div>
 
             {/* Input */}
-            <form onSubmit={handleAdd} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+            <form onSubmit={handleAdd} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem' }}>
                 <input
                     type="text"
                     value={newSymbol}
                     onChange={(e) => setNewSymbol(e.target.value.toUpperCase())}
-                    placeholder="Add Symbol (e.g. AMD)"
-                    className="input"
-                    style={{ flex: 1, padding: '0.5rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)', background: 'rgba(255,255,255,0.05)', color: 'white' }}
+                    placeholder="Symbol"
+                    className="input-field"
+                    style={{ flex: 1, padding: '0.5rem' }}
                 />
                 <button
                     type="submit"
@@ -98,7 +98,7 @@ export default function Watchlist() {
                     disabled={adding}
                     style={{ padding: '0.5rem 1rem' }}
                 >
-                    {adding ? '...' : 'Add'}
+                    {adding ? '...' : '+'}
                 </button>
             </form>
 
@@ -106,14 +106,14 @@ export default function Watchlist() {
             {loading ? (
                 <div style={{ color: 'var(--text-secondary)' }}>Loading...</div>
             ) : items.length === 0 ? (
-                <div style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>Your watchlist is empty.</div>
+                <div style={{ color: 'var(--text-secondary)', fontStyle: 'italic', fontSize: '0.875rem' }}>Empty watchlist.</div>
             ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
                     {items.map((item) => (
-                        <div key={item.symbol} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem', borderBottom: '1px solid var(--border-subtle)' }}>
+                        <div key={item.symbol} className="market-item">
                             <div style={{ fontWeight: 600 }}>{item.symbol}</div>
 
-                            <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                                 <div style={{ textAlign: 'right' }}>
                                     <div>{formatCurrency(item.price)}</div>
                                     <div style={{ fontSize: '0.75rem', color: (item.changePercent || 0) >= 0 ? 'var(--color-success-text)' : 'var(--color-danger-text)' }}>
@@ -124,7 +124,7 @@ export default function Watchlist() {
                                 </div>
                                 <button
                                     onClick={() => handleRemove(item.symbol)}
-                                    style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '1.2rem' }}
+                                    style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '1.25rem', opacity: 0.5 }}
                                     title="Remove"
                                 >
                                     &times;
