@@ -87,8 +87,8 @@ export default async function FinnhubTestPage() {
                                     {JSON.stringify(yahooData, null, 2)}
                                 </pre>
                                 <div className="mt-2 text-sm text-gray-600">
-                                    <p><strong>Pre-Market:</strong> {yahooData.preMarketPrice || 'N/A'}</p>
-                                    <p><strong>Post-Market:</strong> {yahooData.postMarketPrice || 'N/A'}</p>
+                                    <p><strong>Pre-Market:</strong> {yahooData.preMarket || 'N/A'}</p>
+                                    <p><strong>Post-Market:</strong> {yahooData.postMarket || 'N/A'}</p>
                                 </div>
                             </div>
 
@@ -104,8 +104,8 @@ export default async function FinnhubTestPage() {
                                             <p className="text-lg font-bold text-blue-700">${appData.price}</p>
                                             <div className="mt-2 space-y-1">
                                                 {appData.price === rawData.c && <span className="block text-green-600 text-xs">Matches Finnhub</span>}
-                                                {(appData.price === yahooData.preMarketPrice) && <span className="block text-purple-600 font-bold text-xs">Matches Yahoo Pre-Market (Fresher)</span>}
-                                                {(appData.price === yahooData.postMarketPrice) && <span className="block text-purple-600 font-bold text-xs">Matches Yahoo Post-Market</span>}
+                                                {(appData.price === yahooData.preMarket) && <span className="block text-purple-600 font-bold text-xs">Matches Yahoo Pre-Market (Fresher)</span>}
+                                                {(appData.price === yahooData.postMarket) && <span className="block text-purple-600 font-bold text-xs">Matches Yahoo Post-Market</span>}
                                             </div>
                                         </>
                                     ) : (
