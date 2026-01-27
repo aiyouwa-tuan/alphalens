@@ -505,8 +505,8 @@ export default function Dashboard() {
                                         </div>
                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '1rem' }}>
                                             {/* Render actual rates or valid fallback */}
-                                            {(marketData.rates && marketData.rates.length > 0 ? marketData.rates : [{ symbol: '^TNX', name: 'US 10Y Yield', price: 0 }]).map((item: any) => (
-                                                <div key={item.symbol} className="market-item-card" style={{ padding: '0.75rem', backgroundColor: 'var(--bg-main)', borderRadius: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', border: item.price === 0 ? '1px dashed red' : 'none' }}>
+                                            {(marketData.rates && marketData.rates.length > 0 ? marketData.rates : [{ symbol: '^TNX', name: 'US 10Y', price: 0 }]).map((item: any) => (
+                                                <div key={item.symbol} className="market-item-card" style={{ padding: '0.75rem', backgroundColor: 'var(--bg-main)', borderRadius: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
                                                         <span style={{ fontWeight: 700, fontSize: '0.85rem', lineHeight: '1.2' }}>{item.name}</span>
                                                         <span style={{ fontSize: '0.75rem', fontWeight: 600, color: (item.changePercent || 0) >= 0 ? 'var(--color-success-text)' : 'var(--color-danger-text)' }}>

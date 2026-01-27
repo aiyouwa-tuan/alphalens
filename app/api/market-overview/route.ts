@@ -43,7 +43,7 @@ export async function GET() {
             etfs: etfData,
             stocks: sortedStocks,
             rates: [
-                { symbol: '^TNX', name: 'US 10Y Yield', ...data['^TNX'] }
+                { symbol: '^TNX', name: 'US 10Y', ...data['^TNX'] }
             ]
         });
     } catch (error) {
