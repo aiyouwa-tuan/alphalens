@@ -1,24 +1,24 @@
-# How to Connect Your Custom Domain
+# How to Set Up `neurynx.com`
 
-Using your own domain (like `www.yourname.com`) instead of the `.vercel.app` link is very easy.
+To make your site load at **neurynx.com** instead of the vercel link, follow these 2 simple steps:
 
-## Step 1: Add Domain in Vercel
-1.  Go to your **Vercel Dashboard** -> **Settings** -> **Domains**.
-    *   (Direct Link: `https://vercel.com/robinma1102-gmailcoms-projects/alpha-lens/settings/domains`)
-2.  Enter your domain name (e.g., `example.com`) in the input box and click **Add**.
-3.  Choose the "Recommended" option if asked.
+## Step 1: Tell Vercel about "neurynx.com"
+1.  Go to your Vercel Project Settings:
+    *   **Link**: [Vercel Domains Settings](https://vercel.com/robinma1102-gmailcoms-projects/alpha-lens/settings/domains)
+2.  Type `neurynx.com` in the box and click **Add**.
+3.  Vercel will give you a warning that "Invalid Configuration" is detected. This is normal because we haven't set up the DNS yet.
 
-## Step 2: Configure Your DNS
-Vercel will show you exactly what to copy and paste. You will need to log in to where you bought your domain (GoDaddy, Namecheap, Aliyun, etc.) and add these records:
+## Step 2: Configure DNS (Where you bought the domain)
+Log in to your domain provider (GoDaddy, Namecheap, Aliyun, etc.) and add these **2 Records**:
 
-| Type | Name | Value |
-| :--- | :--- | :--- |
-| **A** | `@` | `76.76.21.21` |
-| **CNAME** | `www` | `cname.vercel-dns.com` |
+| Type | Name | Value | TTL |
+| :--- | :--- | :--- | :--- |
+| **A** | `@` | `76.76.21.21` | Automatic / 1 Hour |
+| **CNAME** | `www` | `cname.vercel-dns.com` | Automatic / 1 Hour |
 
-*(Note: If Vercel gives you different values, use theirs).*
+## Step 3: Done!
+*   **Wait**: It usually takes 5-10 minutes for the changes to propagate.
+*   **HTTPS**: Vercel will automatically set up the secure lock (HTTPS) for you.
+*   **Result**: Your site will be accessible at `https://neurynx.com`.
 
-## Step 3: Wait
-*   It usually takes **minutes** (but can take up to 24 hours).
-*   Vercel will automatically generate an **SSL Certificate** (HTTPS) for you.
-*   Once the indicators turn **Green** on Vercel, your site is live at your custom domain!
+> **Note**: If you want `neurynx.com` to automatically go to the Dashboard (instead of the home page), we can add a redirect in `next.config.js`, but usually users keep the homepage as the landing.
