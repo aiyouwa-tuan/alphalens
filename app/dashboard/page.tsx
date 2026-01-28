@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import TransactionModal from '../components/TransactionModal';
 import Watchlist from '@/components/Watchlist';
 
@@ -170,6 +171,9 @@ export default function Dashboard() {
                             <button onClick={() => window.scrollTo({ top: 600, behavior: 'smooth' })} className="btn btn-secondary" style={{ padding: '0.8rem 2rem', fontSize: '1rem' }}>
                                 View Market Data
                             </button>
+                            <Link href="/dashboard/news" className="btn btn-secondary" style={{ padding: '0.8rem 2rem', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa', borderColor: 'rgba(59, 130, 246, 0.3)' }}>
+                                <span>📰</span> News
+                            </Link>
                         </div>
                     </div>
 
@@ -342,9 +346,14 @@ export default function Dashboard() {
                         <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Portfolio Overview</h2>
                         <p style={{ color: 'var(--text-secondary)' }}>Welcome back, Investor</p>
                     </div>
-                    <button onClick={() => setIsModalOpen(true)} className="btn btn-primary">
-                        + Add Transaction
-                    </button>
+                    <div className="flex gap-4">
+                        <Link href="/dashboard/news" className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span>📰</span> Market News
+                        </Link>
+                        <button onClick={() => setIsModalOpen(true)} className="btn btn-primary">
+                            + Add Transaction
+                        </button>
+                    </div>
                 </div>
 
                 {/* 2. Key Stats Row */}
