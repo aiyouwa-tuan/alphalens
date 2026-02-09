@@ -120,13 +120,23 @@ async function getFinnhubQuote(symbol: string): Promise<{ price: number; change:
     if (!FINNHUB_API_KEY) return null;
 
     try {
+        // PROXY STRATEGY: Use ETFs for Indices to get real-time data on free tier
+        const PROXY_MAP: Record<string, string> = {
+            '^GSPC': 'SPY',  // S&P 500 -> SPDR S&P 500 ETF
+            '^DJI': 'DIA',   // Dow Jones -> SPDR Dow Jones ETF
+            '^IXIC': 'QQQ',  // NASDAQ -> Invesco QQQ
+            '^RUT': 'IWM'    // Russell 2000 -> iShares Russell 2000
+        };
+
+        const fetchSymbol = PROXY_MAP[symbol] || symbol;
+
         // Map common symbols if necessary (Finnhub usually follows Yahoo/standard conventions)
         // e.g. ^GSPC is supported.
-        const quoteUrl = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${FINNHUB_API_KEY}`;
+        const quoteUrl = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(fetchSymbol)}&token=${FINNHUB_API_KEY}`;
         const quoteRes = await fetch(quoteUrl, { cache: 'no-store' });
 
         if (!quoteRes.ok) {
-            console.warn(`Finnhub Quote failed for ${symbol}: ${quoteRes.status}`);
+            console.warn(`Finnhub Quote failed for ${symbol} (via ${fetchSymbol}): ${quoteRes.status}`);
             return null;
         }
 
