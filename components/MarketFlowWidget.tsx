@@ -75,12 +75,14 @@ export default function MarketFlowWidget({ title, items, isLoading }: MarketFlow
 
                                 <td className="px-4 py-3 text-right">
                                     <div className="flex flex-col items-end">
-                                        <span className="font-mono font-medium">{item.price.toFixed(2)}</span>
+                                        <span className="font-mono font-medium">
+                                            {typeof item.price === 'number' ? item.price.toFixed(2) : '0.00'}
+                                        </span>
                                         <span className={clsx(
                                             "text-xs font-semibold",
-                                            item.changePercent >= 0 ? "text-[var(--color-success-text)]" : "text-[var(--color-danger-text)]"
+                                            (item.changePercent || 0) >= 0 ? "text-[var(--color-success-text)]" : "text-[var(--color-danger-text)]"
                                         )}>
-                                            {item.changePercent >= 0 ? '+' : ''}{item.changePercent.toFixed(2)}%
+                                            {(item.changePercent || 0) >= 0 ? '+' : ''}{(item.changePercent || 0).toFixed(2)}%
                                         </span>
                                     </div>
                                 </td>

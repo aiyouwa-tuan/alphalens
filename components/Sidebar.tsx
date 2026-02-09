@@ -55,7 +55,16 @@ export default function Sidebar() {
     // Initialize Supabase (Client Component) - Safe Fallback
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+
+    let supabase: any = null;
+    try {
+        if (supabaseUrl && supabaseKey) {
+            supabase = createClient(supabaseUrl, supabaseKey);
+        }
+    } catch (e) {
+        console.error("Supabase Init Failed:", e);
+        supabase = null;
+    }
 
     useEffect(() => {
         if (!supabase) return;
@@ -67,7 +76,7 @@ export default function Sidebar() {
         checkUser();
 
         // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: string, session: any) => {
             setUser(session?.user || null);
         });
 
