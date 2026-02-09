@@ -1,23 +1,14 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { clsx } from 'clsx';
+import { useLanguage } from '@/components/LanguageProvider';
 
 interface NewsItem {
-    id: string;
-    headline?: string;
-    title?: string;
-    source: string;
+    id: number;
+    headline: string;
+    summary: string;
     url: string;
-    publishedAt?: number | string; // Unix timestamp or ISO string
-    pubDate?: string; // RSS format
-    summary?: string;
-    contentSnippet?: string;
-}
-
-interface NewsFeedWidgetProps {
-    items: NewsItem[];
     source: string;
     datetime: number;
     image: string;
@@ -46,6 +37,22 @@ export default function NewsFeedWidget() {
         fetchNews();
     }, [language]); // Re-fetch when language changes
 
+    if (loading) {
+        return (
+            <div className="bg-[var(--bg-panel)] rounded-lg border border-[var(--border-subtle)] p-4 h-[400px] animate-pulse">
+                <div className="h-4 bg-[var(--bg-subtle)] w-1/3 mb-4 rounded"></div>
+                <div className="space-y-4">
+                    {[1, 2, 3].map(i => (
+                        <div key={i} className="flex flex-col gap-2">
+                            <div className="h-3 bg-[var(--bg-subtle)] w-3/4 rounded"></div>
+                            <div className="h-2 bg-[var(--bg-subtle)] w-1/2 rounded"></div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="bg-[var(--card-bg)] border border-[var(--border-subtle)] rounded-lg p-5 h-full flex flex-col">
             <div className="flex justify-between items-center mb-4">
@@ -54,9 +61,7 @@ export default function NewsFeedWidget() {
             </div>
 
             <div className="flex-1 overflow-y-auto pr-2 space-y-4 custom-scrollbar">
-                {loading ? (
-                    <div className="text-sm text-[var(--text-muted)]">{t('loadingNews')}</div>
-                ) : news.length === 0 ? (
+                {news.length === 0 ? (
                     <div className="text-sm text-[var(--text-muted)]">{t('noNews')}</div>
                 ) : (
                     news.map((item, i) => (
@@ -72,21 +77,18 @@ export default function NewsFeedWidget() {
                                         </span>
                                     </div>
                                     <a href={item.url} target="_blank" rel="noopener noreferrer" className="block text-sm font-medium text-white group-hover:text-[var(--text-accent)] transition-colors line-clamp-2 mb-1">
-                                        {item.headline}
+                                        {item.headline || item.summary}
                                     </a>
-                                    <p className="text-xs text-[var(--text-secondary)] line-clamp-3 leading-relaxed">
+                                    <p className="text-xs text-[var(--text-secondary)] line-clamp-3 leading-relaxed mt-1">
                                         {item.summary}
                                     </p>
-                                )}
-                                </a>
+                                </div>
                             </div>
-                            ))
-                            ) : (
-                            <div className="text-center text-[var(--text-muted)] py-8">
-                                No recent news updates.
-                            </div>
-                )}
+                            {i < news.length - 1 && <div className="h-px bg-[var(--border-subtle)] mt-4" />}
                         </div>
+                    ))
+                )}
+            </div>
         </div>
-            );
+    );
 }
