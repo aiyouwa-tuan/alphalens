@@ -28,6 +28,8 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function PortfolioMainChart({ data, isLoading }: PortfolioMainChartProps) {
+    const { t } = useLanguage();
+
     if (isLoading) {
         return (
             <div className="w-full h-[300px] flex items-center justify-center bg-[var(--bg-panel)] rounded-lg animate-pulse">
@@ -49,7 +51,7 @@ export default function PortfolioMainChart({ data, isLoading }: PortfolioMainCha
 
     return (
         <div className="w-full h-[350px] bg-[var(--bg-panel)] rounded-lg p-4 border border-[var(--border-subtle)]">
-            <h3 className="text-sm font-semibold text-[var(--text-secondary)] mb-4 uppercase tracking-wider">Portfolio Performance</h3>
+            <h3 className="text-sm font-semibold text-[var(--text-secondary)] mb-4 uppercase tracking-wider">{t('portfolioPerformance')}</h3>
             <ResponsiveContainer width="100%" height="100%">
                 <AreaChart
                     data={data}

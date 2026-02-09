@@ -45,30 +45,33 @@ export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url);
         const symbol = searchParams.get('symbol') || 'general';
+        const lang = searchParams.get('lang') || 'en'; // Default to English now? Or stick to previous default? User said "Default English". 
 
         const newsItems = await fetchFinnhubNews(symbol);
 
-        // Take top 10 to avoid hitting translation rate limits too hard
+        // Take top 10
         const topNews = newsItems.slice(0, 10);
 
-        // Translate in parallel
-        const translatedNews = await Promise.all(topNews.map(async (item: any) => {
-            // Translate Headline and Summary
-            // Optimization: Combine them to send 1 request? No, keep simple.
-            const [zhHeadline, zhSummary] = await Promise.all([
-                translateText(item.headline),
-                translateText(item.summary)
-            ]);
+        if (lang === 'zh') {
+            // Translate to Chinese
+            const translatedNews = await Promise.all(topNews.map(async (item: any) => {
+                const [zhHeadline, zhSummary] = await Promise.all([
+                    translateText(item.headline),
+                    translateText(item.summary)
+                ]);
 
-            return {
-                ...item,
-                headline: zhHeadline,
-                summary: zhSummary,
-                original_headline: item.headline
-            };
-        }));
-
-        return NextResponse.json({ news: translatedNews });
+                return {
+                    ...item,
+                    headline: zhHeadline,
+                    summary: zhSummary,
+                    original_headline: item.headline
+                };
+            }));
+            return NextResponse.json({ news: translatedNews });
+        } else {
+            // Return original English
+            return NextResponse.json({ news: topNews });
+        }
     } catch (error) {
         console.error("News API Error:", error);
         return NextResponse.json({ error: "Failed to fetch news" }, { status: 500 });

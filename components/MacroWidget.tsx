@@ -24,8 +24,8 @@ export default function MacroWidget() {
     if (loading) return <div className="h-full flex items-center justify-center text-[var(--text-muted)]">Loading Macro...</div>;
 
     return (
-        <div className="flex flex-col h-full bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-xl p-4">
-            <h3 className="text-sm font-semibold text-[var(--text-secondary)] mb-4 tracking-wider">MACRO INDICATORS</h3>
+        <div className="bg-[var(--card-bg)] border border-[var(--border-subtle)] rounded-lg p-5">
+            <h3 className="text-xs font-bold text-[var(--text-muted)] tracking-wider uppercase mb-4">{t('macroIndicators')}</h3>
             <div className="grid grid-cols-2 gap-4">
                 {data.map((item) => (
                     <div key={item.symbol} className="flex flex-col">

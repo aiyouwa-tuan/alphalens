@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useLanguage } from '@/components/LanguageProvider';
 
 // Dynamic Indices Fetching
 // Replaces hardcoded values (which were causing "Old Data" complaints)
@@ -15,15 +16,18 @@ interface MarketItem {
 }
 
 export default function TopBar() {
-    const [indices, setIndices] = useState<MarketItem[]>([
-        // Initial state can be empty or skeletons.
-        // Or keep the old values as "Loading..." placeholders? No, checking "Loading..." is better.
-    ]);
+    const { t, language, setLanguage } = useLanguage();
+    const [indices, setIndices] = useState<MarketItem[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         async function fetchData() {
             try {
+                // We might want to pass 'lang' here too if we translate Ticker names? 
+                // For now Ticker names (S&P 500) are universal often.
+                // But the API *Response* for Gold/BTC might need translation? 
+                // Currently API returns hardcoded "Gold". 
+                // I'll leave tickers as is for now.
                 const res = await fetch('/api/market-overview');
                 if (!res.ok) throw new Error('Failed');
                 const data = await res.json();
@@ -35,7 +39,10 @@ export default function TopBar() {
                     if (!item) return null;
                     const change = item.changePercent || 0;
                     const date = item.lastUpdated ? new Date(item.lastUpdated) : new Date();
-                    const timeStr = date.toLocaleString('en-US', {
+
+                    // Format date based on language locale
+                    const locale = language === 'zh' ? 'zh-CN' : 'en-US';
+                    const timeStr = date.toLocaleString(locale, {
                         weekday: 'short',
                         hour: 'numeric',
                         minute: '2-digit',
@@ -77,21 +84,21 @@ export default function TopBar() {
         // Poll every 30s
         const interval = setInterval(fetchData, 30000);
         return () => clearInterval(interval);
-    }, []);
+    }, [language]); // Re-fetch/re-format when language changes
 
     return (
         <div className="h-14 border-b border-[var(--border-subtle)] bg-[var(--bg-app)] flex items-center justify-between px-6 sticky top-0 z-40">
             {/* Left: Section Title */}
             <div className="flex items-center gap-2">
-                <h1 className="text-lg font-bold text-white tracking-tight">Dashboard</h1>
+                <h1 className="text-lg font-bold text-white tracking-tight">{t('dashboard')}</h1>
                 <span className="text-[var(--text-secondary)]">/</span>
-                <span className="text-sm font-medium text-[var(--text-secondary)]">Global Overview</span>
+                <span className="text-sm font-medium text-[var(--text-secondary)]">{t('globalOverview')}</span>
             </div>
 
             {/* Center: Mini Ticker (Dynamic) */}
             <div className="hidden md:flex items-center gap-6 overflow-hidden">
                 {loading ? (
-                    <span className="text-xs text-[var(--text-muted)]">Loading market data...</span>
+                    <span className="text-xs text-[var(--text-muted)]">{t('loadingMarket')}</span>
                 ) : (
                     indices.map((item) => (
                         <div key={item.symbol} className="flex items-center gap-2 text-xs font-mono cursor-help" title={`Last Update: ${item.timeStr}`}>
@@ -106,8 +113,14 @@ export default function TopBar() {
 
             {/* Right: Actions */}
             <div className="flex items-center gap-3">
+                <button
+                    onClick={() => setLanguage(language === 'en' ? 'zh' : 'en')}
+                    className="text-xs font-medium text-[var(--text-muted)] hover:text-white px-2 py-1 rounded border border-[var(--border-subtle)] hover:border-white transition-colors"
+                >
+                    {language === 'en' ? 'CN' : 'EN'}
+                </button>
                 <button className="text-xs font-medium bg-[var(--text-accent)] text-white px-3 py-1.5 rounded hover:bg-blue-600 transition-colors">
-                    + New Order
+                    {t('newOrder')}
                 </button>
             </div>
         </div>

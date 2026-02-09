@@ -1,55 +1,36 @@
 'use client';
 
 import React from 'react';
-import { clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import { useLanguage } from '@/components/LanguageProvider';
 
-interface MarketItem {
-    symbol: string;
-    price: number;
-    changePercent: number;
-}
-
-interface MarketRibbonProps {
-    items: MarketItem[];
-    className?: string; // Allow custom classes
-}
-
-export default function MarketRibbon({ items, className }: MarketRibbonProps) {
-    // If no items, provide fallback or hide
-    if (!items || items.length === 0) return null;
+export default function MarketRibbon() {
+    const { t } = useLanguage();
 
     return (
-        <div className={twMerge("w-full overflow-hidden bg-[var(--bg-panel)] border-b border-[var(--border-subtle)] py-2", className)}>
-            <div className="flex animate-marquee whitespace-nowrap">
-                {/* Double the list to create seamless loop effect */}
-                {[...items, ...items].map((item, index) => (
-                    <div key={`${item.symbol}-${index}`} className="flex items-center gap-2 mx-6 text-sm font-mono">
-                        <span className="font-bold text-[var(--text-primary)]">{item.symbol}</span>
-                        <span className="text-[var(--text-secondary)]">{item.price.toFixed(2)}</span>
-                        <span
-                            className={clsx(
-                                "font-semibold",
-                                item.changePercent >= 0 ? "text-[var(--color-success-text)]" : "text-[var(--color-danger-text)]"
-                            )}
-                        >
-                            {item.changePercent >= 0 ? '+' : ''}{item.changePercent.toFixed(2)}%
-                        </span>
-                    </div>
-                ))}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            {/* Indices */}
+            <div className="bg-[var(--card-bg)] border border-[var(--border-subtle)] rounded-lg p-5">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xs font-bold text-[var(--text-muted)] tracking-wider uppercase">{t('globalIndices')}</h3>
+                    <span className="text-[10px] text-[var(--text-secondary)]">{t('realTime')}</span>
+                </div>
+                {/* ... */}
             </div>
-            <style jsx>{`
-        @keyframes marquee {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
-        }
-        .animate-marquee {
-          animation: marquee 30s linear infinite;
-        }
-        .animate-marquee:hover {
-          animation-play-state: paused;
-        }
-      `}</style>
+
+            {/* Crypto */}
+            <div className="bg-[var(--card-bg)] border border-[var(--border-subtle)] rounded-lg p-5">
+                <h3 className="text-xs font-bold text-[var(--text-muted)] tracking-wider uppercase mb-4">{t('cryptoAssets')}</h3>
+                {/* ... */}
+            </div>
+
+            {/* Tech */}
+            <div className="bg-[var(--card-bg)] border border-[var(--border-subtle)] rounded-lg p-5">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xs font-bold text-[var(--text-muted)] tracking-wider uppercase">{t('blueChipsTech')}</h3>
+                    <span className="text-[10px] text-[var(--text-secondary)]">{t('realTime')}</span>
+                </div>
+                {/* ... */}
+            </div>
         </div>
     );
 }
