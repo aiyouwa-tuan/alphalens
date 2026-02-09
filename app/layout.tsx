@@ -22,6 +22,9 @@ export default function RootLayout({
         <div className="pl-16 min-h-screen">
           {children}
         </div>
+        <div className="fixed bottom-2 right-2 text-xs text-[var(--text-muted)] opacity-50 pointer-events-none">
+          v1.2.0 (Auth + TSM)
+        </div>
       </body>
     </html>
   );
