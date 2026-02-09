@@ -4,15 +4,19 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 export default function AuthCallbackPage() {
     const router = useRouter();
 
     useEffect(() => {
+        if (!supabase) {
+            console.error('Supabase not configured');
+            router.push('/login?error=config_missing');
+            return;
+        }
         // The Supabase client automatically handles the OAuth callback by parsing the URL hash/query
         // and persisting the session to localStorage.
         // We just need to wait a moment or check session, then redirect.

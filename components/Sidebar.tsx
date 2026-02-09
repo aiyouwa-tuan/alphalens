@@ -52,13 +52,14 @@ export default function Sidebar() {
     const router = useRouter();
     const [user, setUser] = useState<any>(null);
 
-    // Initialize Supabase (Client Component)
-    const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+    // Initialize Supabase (Client Component) - Safe Fallback
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
     useEffect(() => {
+        if (!supabase) return;
+
         const checkUser = async () => {
             const { data: { session } } = await supabase.auth.getSession();
             setUser(session?.user || null);
@@ -71,9 +72,15 @@ export default function Sidebar() {
         });
 
         return () => subscription.unsubscribe();
-    }, []);
+    }, [supabase]);
 
     const handleLogout = async () => {
+        if (!supabase) {
+            // If no supabase, just clear local state/redirect
+            setUser(null);
+            router.push('/login');
+            return;
+        }
         await supabase.auth.signOut();
         router.push('/login');
         router.refresh();
