@@ -9,6 +9,8 @@ import TopBar from '@/components/TopBar';
 import PortfolioMainChart from '@/components/PortfolioMainChart';
 import MarketFlowWidget from '@/components/MarketFlowWidget';
 import NewsFeedWidget from '@/components/NewsFeedWidget';
+import MacroWidget from '@/components/MacroWidget';
+import CryptoWidget from '@/components/CryptoWidget';
 
 // Types (Keep existing types)
 interface Holding {
@@ -35,19 +37,20 @@ export default function Dashboard() {
     const [holdings, setHoldings] = useState<Holding[]>([]);
     const [marketData, setMarketData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    const [chartData, setChartData] = useState<any[]>([]);
+    const [newsItems, setNewsItems] = useState<any[]>([]);
 
-    // Determine auth state (simplified for this view) 
-    // In real app, we check session.
+    // Determine auth state
     const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [chartData, setChartData] = useState<any[]>([]);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                // Parallel fetch
-                const [folioRes, marketRes] = await Promise.all([
+                // Fetch Portfolio & Market Overview
+                const [folioRes, marketRes, newsRes] = await Promise.all([
                     fetch('/api/portfolio', { cache: 'no-store' }),
-                    fetch('/api/market-overview', { cache: 'no-store' })
+                    fetch('/api/market-overview', { cache: 'no-store' }),
+                    fetch('/api/news/rss', { next: { revalidate: 60 } })
                 ]);
 
                 if (folioRes.ok) {
@@ -63,6 +66,11 @@ export default function Dashboard() {
                 if (marketRes.ok) {
                     const mData = await marketRes.json();
                     setMarketData(mData);
+                }
+
+                if (newsRes.ok) {
+                    const newsData = await newsRes.json();
+                    setNewsItems(newsData.items || []);
                 }
             } catch (e) {
                 console.error(e);
@@ -89,14 +97,6 @@ export default function Dashboard() {
         }
         setChartData(history);
     };
-
-    // News Items (Mock for UI)
-    const newsItems = [
-        { id: '1', headline: "AI Chip Demand Surges: NVIDIA & AMD Rally", source: "MarketWatch", url: "#", publishedAt: Date.now() / 1000 - 3600, summary: "Analyst upgrades drive semiconductor sector to new highs." },
-        { id: '2', headline: "Fed Minutes Reveal Caution on Rate Cuts", source: "Bloomberg", url: "#", publishedAt: Date.now() / 1000 - 7200, summary: "Officials want more confidence in inflation data before easing." },
-        { id: '3', headline: "Oil Prices Stabilize Amid Geopolitical Tensions", source: "Reuters", url: "#", publishedAt: Date.now() / 1000 - 10800 },
-        { id: '4', headline: "Tech Sector Leads Weekly Gains", source: "CNBC", url: "#", publishedAt: Date.now() / 1000 - 86400 }
-    ];
 
     if (loading) return null; // Or a skeleton
 
@@ -134,29 +134,31 @@ export default function Dashboard() {
                         </div>
                     </div>
 
-                    {/* --- ROW 2: Bento Grid for Market Data --- */}
+                    {/* --- ROW 2: Market Data Grid (4 Cols x 3) --- */}
 
-                    {/* Indices: Col 4 */}
-                    <div className="md:col-span-4 h-[300px]">
+                    {/* Macro Data: Col 3 */}
+                    <div className="md:col-span-3 h-[300px]">
+                        <MacroWidget />
+                    </div>
+
+                    {/* Indices: Col 3 */}
+                    <div className="md:col-span-3 h-[300px]">
                         <MarketFlowWidget
                             title="Global Indices"
                             items={[...(marketData?.indices?.us || []), ...(marketData?.indices?.hk || [])].slice(0, 5)}
                         />
                     </div>
 
-                    {/* M7 / Stocks: Col 4 */}
-                    <div className="md:col-span-4 h-[300px]">
+                    {/* Crypto: Col 3 */}
+                    <div className="md:col-span-3 h-[300px]">
+                        <CryptoWidget />
+                    </div>
+
+                    {/* Blue Chips: Col 3 */}
+                    <div className="md:col-span-3 h-[300px]">
                         <MarketFlowWidget
                             title="Blue Chips & Tech"
                             items={marketData?.stocks?.slice(0, 5) || []}
-                        />
-                    </div>
-
-                    {/* Commodities / Rates: Col 4 */}
-                    <div className="md:col-span-4 h-[300px]">
-                        <MarketFlowWidget
-                            title="Commodities & Rates"
-                            items={marketData?.rates || []}
                         />
                     </div>
 

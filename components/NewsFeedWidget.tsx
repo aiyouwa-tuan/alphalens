@@ -6,11 +6,13 @@ import { clsx } from 'clsx';
 
 interface NewsItem {
     id: string;
-    headline: string;
+    headline?: string;
+    title?: string;
     source: string;
     url: string;
-    publishedAt: number; // Unix timestamp
+    publishedAt: number | string; // Unix timestamp or ISO string
     summary?: string;
+    contentSnippet?: string;
 }
 
 interface NewsFeedWidgetProps {
@@ -52,15 +54,18 @@ export default function NewsFeedWidget({ items, isLoading }: NewsFeedWidgetProps
                                         {item.source}
                                     </span>
                                     <span className="text-[10px] text-[var(--text-secondary)]">
-                                        {new Date(item.publishedAt * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        {typeof item.publishedAt === 'number'
+                                            ? new Date(item.publishedAt * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                            : new Date(item.publishedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                        }
                                     </span>
                                 </div>
                                 <h4 className="text-sm font-semibold text-[var(--text-primary)] group-hover:text-[var(--text-accent)] transition-colors line-clamp-2">
-                                    {item.headline}
+                                    {item.headline || item.title}
                                 </h4>
-                                {item.summary && (
+                                {(item.summary || item.contentSnippet) && (
                                     <p className="text-xs text-[var(--text-secondary)] mt-1 line-clamp-2">
-                                        {item.summary}
+                                        {item.summary || item.contentSnippet}
                                     </p>
                                 )}
                             </a>
