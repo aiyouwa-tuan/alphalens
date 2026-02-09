@@ -10,7 +10,8 @@ interface NewsItem {
     title?: string;
     source: string;
     url: string;
-    publishedAt: number | string; // Unix timestamp or ISO string
+    publishedAt?: number | string; // Unix timestamp or ISO string
+    pubDate?: string; // RSS format
     summary?: string;
     contentSnippet?: string;
 }
@@ -54,10 +55,17 @@ export default function NewsFeedWidget({ items, isLoading }: NewsFeedWidgetProps
                                         {item.source}
                                     </span>
                                     <span className="text-[10px] text-[var(--text-secondary)]">
-                                        {typeof item.publishedAt === 'number'
-                                            ? new Date(item.publishedAt * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                                            : new Date(item.publishedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                                        }
+                                        {(() => {
+                                            const dateVal = item.publishedAt || item.pubDate;
+                                            if (!dateVal) return '';
+                                            try {
+                                                const d = typeof dateVal === 'number' ? new Date(dateVal * 1000) : new Date(dateVal);
+                                                if (isNaN(d.getTime())) return '';
+                                                return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                            } catch (e) {
+                                                return '';
+                                            }
+                                        })()}
                                     </span>
                                 </div>
                                 <h4 className="text-sm font-semibold text-[var(--text-primary)] group-hover:text-[var(--text-accent)] transition-colors line-clamp-2">
