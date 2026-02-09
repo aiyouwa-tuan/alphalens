@@ -11,6 +11,7 @@ interface MarketItem {
     value: string;
     change: string;
     up: boolean;
+    timeStr: string;
 }
 
 export default function TopBar() {
@@ -33,11 +34,21 @@ export default function TopBar() {
                 const formatItem = (name: string, item: any) => {
                     if (!item) return null;
                     const change = item.changePercent || 0;
+                    const date = item.lastUpdated ? new Date(item.lastUpdated) : new Date();
+                    const timeStr = date.toLocaleString('en-US', {
+                        weekday: 'short',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        month: 'short',
+                        day: 'numeric'
+                    });
+
                     return {
                         symbol: name,
                         value: (item.price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
                         change: (change > 0 ? '+' : '') + change.toFixed(1) + '%',
-                        up: change >= 0
+                        up: change >= 0,
+                        timeStr: timeStr
                     };
                 };
 
@@ -83,7 +94,7 @@ export default function TopBar() {
                     <span className="text-xs text-[var(--text-muted)]">Loading market data...</span>
                 ) : (
                     indices.map((item) => (
-                        <div key={item.symbol} className="flex items-center gap-2 text-xs font-mono">
+                        <div key={item.symbol} className="flex items-center gap-2 text-xs font-mono cursor-help" title={`Last Update: ${item.timeStr}`}>
                             <span className="font-bold text-[var(--text-muted)]">{item.symbol}</span>
                             <span className={item.up ? "text-[var(--color-success-text)]" : "text-[var(--color-danger-text)]"}>
                                 {item.value} ({item.change})

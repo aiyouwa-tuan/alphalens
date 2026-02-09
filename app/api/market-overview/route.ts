@@ -42,8 +42,8 @@ export async function GET() {
                 cn: INDICES.CN.map(sym => ({ symbol: sym, ...data[sym] }))
             },
             commodities: [
-                { symbol: 'Gold', ...data['GC=F'], change: data['GC=F']?.change || 0, changePercent: data['GC=F']?.changePercent || 0, price: data['GC=F']?.price || 0 },
-                { symbol: 'BTC', ...data['BTC-USD'], change: data['BTC-USD']?.change || 0, changePercent: data['BTC-USD']?.changePercent || 0, price: data['BTC-USD']?.price || 0 }
+                { symbol: 'Gold', ...data['GC=F'], change: data['GC=F']?.change || 0, changePercent: data['GC=F']?.changePercent || 0, price: data['GC=F']?.price || 0, lastUpdated: data['GC=F']?.lastUpdated },
+                { symbol: 'BTC', ...data['BTC-USD'], change: data['BTC-USD']?.change || 0, changePercent: data['BTC-USD']?.changePercent || 0, price: data['BTC-USD']?.price || 0, lastUpdated: data['BTC-USD']?.lastUpdated }
             ],
             etfs: etfData,
             stocks: sortedStocks,

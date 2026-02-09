@@ -116,7 +116,7 @@ async function scrapePrice(symbol: string): Promise<{ price: number; change: num
     }
 }
 
-async function getFinnhubQuote(symbol: string): Promise<{ price: number; change: number; changePercent: number; marketCap?: number } | null> {
+async function getFinnhubQuote(symbol: string): Promise<{ price: number; change: number; changePercent: number; marketCap?: number; lastUpdated?: number } | null> {
     if (!FINNHUB_API_KEY) return null;
 
     try {
@@ -146,6 +146,8 @@ async function getFinnhubQuote(symbol: string): Promise<{ price: number; change:
             // Finnhub sometimes returns 0 for invalid symbols
             return null;
         }
+
+        const timestamp = quoteData.t ? quoteData.t * 1000 : Date.now(); // Finnhub 't' is unix seconds
 
         // Apply Multipliers for Indices to match Broker levels (approximate but much closer than ETF price)
         const PROXY_MULTIPLIERS: Record<string, number> = {
@@ -192,7 +194,7 @@ async function getFinnhubQuote(symbol: string): Promise<{ price: number; change:
             }
         }
 
-        return { price, change, changePercent, marketCap };
+        return { price, change, changePercent, marketCap, lastUpdated: timestamp };
 
     } catch (error) {
         console.warn(`Finnhub failed for ${symbol}`, error);
@@ -233,7 +235,7 @@ async function getYahooQuote(symbol: string): Promise<{ price: number; change: n
     return null;
 }
 
-export async function getQuote(symbol: string): Promise<{ price: number; change: number; changePercent: number; marketCap?: number } | null> {
+export async function getQuote(symbol: string): Promise<{ price: number; change: number; changePercent: number; marketCap?: number; lastUpdated?: number } | null> {
     // Parallel Fetch (Finnhub + Yahoo)
     const [finnhubResult, yahooResult] = await Promise.allSettled([
         FINNHUB_API_KEY ? getFinnhubQuote(symbol) : Promise.resolve(null),
@@ -327,7 +329,7 @@ export async function getQuote(symbol: string): Promise<{ price: number; change:
     return scraped;
 }
 
-export async function getQuotes(symbols: string[]): Promise<Record<string, { price: number; change: number; changePercent: number; marketCap?: number }>> {
+export async function getQuotes(symbols: string[]): Promise<Record<string, { price: number; change: number; changePercent: number; marketCap?: number; lastUpdated?: number }>> {
     if (symbols.length === 0) return {};
 
     const results = await Promise.all(
