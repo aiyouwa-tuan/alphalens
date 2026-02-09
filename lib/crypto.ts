@@ -29,9 +29,30 @@ export async function fetchCryptoPrices(ids: string[]) {
         });
 
         if (!res.ok) throw new Error(`CoinGecko Error: ${res.status}`);
-        return await res.json();
+        const raw = await res.json();
+
+        // Transform Object to Array
+        // Response format: { "bitcoin": { "usd": 50000, "usd_24h_change": 2.5 }, ... }
+        const results: CryptoData[] = [];
+
+        // Use the requested IDs to maintain order
+        for (const id of ids) {
+            const item = raw[id];
+            if (item) {
+                results.push({
+                    id: id,
+                    symbol: id, // Simple fallback, or we could fetch symbol map
+                    name: id.charAt(0).toUpperCase() + id.slice(1),
+                    current_price: item.usd || 0,
+                    price_change_percentage_24h: item.usd_24h_change || 0,
+                    last_updated: new Date().toISOString()
+                });
+            }
+        }
+
+        return results;
     } catch (error) {
         console.error('Error fetching crypto prices:', error);
-        return {};
+        return [];
     }
 }
