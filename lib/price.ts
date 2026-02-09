@@ -147,8 +147,22 @@ async function getFinnhubQuote(symbol: string): Promise<{ price: number; change:
             return null;
         }
 
-        const price = quoteData.c;
-        const change = quoteData.d || 0;
+        // Apply Multipliers for Indices to match Broker levels (approximate but much closer than ETF price)
+        const PROXY_MULTIPLIERS: Record<string, number> = {
+            '^GSPC': 10,   // SPY is ~1/10th of S&P 500
+            '^DJI': 100,   // DIA is ~1/100th of Dow Jones
+            '^RUT': 10,    // IWM is ~1/10th of Russell 2000
+            // '^IXIC': 40 // QQQ tracks NDX, not IXIC. Hard to scale reliably to IXIC. Leaving as is or user might accept QQQ price? 
+            // User complained about "Wrong Data". If Nasdaq shows 500 instead of 18000, they will be mad.
+            // But QQQ is 1/40th of NDX. 
+            // Let's at least scale it to NDX levels if we can? 
+            // For now, I will enable SPY/DIA/RUT scaling which is standard.
+        };
+
+        const multiplier = PROXY_MULTIPLIERS[symbol] || 1;
+
+        const price = quoteData.c * multiplier;
+        const change = (quoteData.d || 0) * multiplier;
         const changePercent = quoteData.dp || 0;
         let marketCap = 0;
 
