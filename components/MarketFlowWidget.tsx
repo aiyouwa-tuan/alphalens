@@ -3,6 +3,7 @@
 import React from 'react';
 import { clsx } from 'clsx';
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
+import { useLanguage } from '@/components/LanguageProvider';
 
 interface MarketItem {
     symbol: string;
@@ -19,6 +20,8 @@ interface MarketFlowWidgetProps {
 }
 
 export default function MarketFlowWidget({ title, items, isLoading }: MarketFlowWidgetProps) {
+    const { t } = useLanguage();
+
     if (isLoading) {
         return (
             <div className="h-[200px] bg-[var(--bg-panel)] rounded-lg animate-pulse border border-[var(--border-subtle)] p-4">
@@ -36,7 +39,7 @@ export default function MarketFlowWidget({ title, items, isLoading }: MarketFlow
         <div className="bg-[var(--bg-panel)] rounded-lg border border-[var(--border-subtle)] overflow-hidden flex flex-col h-full">
             <div className="px-4 py-3 border-b border-[var(--border-subtle)] flex justify-between items-center">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">{title}</h3>
-                <span className="text-[10px] text-[var(--text-muted)]">Real-time</span>
+                <span className="text-[10px] text-[var(--text-muted)]">{t('realTime')}</span>
             </div>
 
             <div className="flex-1 overflow-auto">
@@ -91,7 +94,7 @@ export default function MarketFlowWidget({ title, items, isLoading }: MarketFlow
                     </tbody>
                 </table>
                 {(!items || items.length === 0) && (
-                    <div className="p-4 text-center text-[var(--text-muted)] text-xs">No data available</div>
+                    <div className="p-4 text-center text-[var(--text-muted)] text-xs">{t('noData')}</div>
                 )}
             </div>
         </div>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import TransactionModal from '@/app/components/TransactionModal';
+import { useLanguage } from '@/components/LanguageProvider';
 
 // Components
 import TopBar from '@/components/TopBar';
@@ -98,6 +99,8 @@ export default function Dashboard() {
         setChartData(history);
     };
 
+    const { t } = useLanguage();
+
     if (loading) return null; // Or a skeleton
 
     return (
@@ -119,12 +122,12 @@ export default function Dashboard() {
 
                         {/* Equity Card */}
                         <div className="flex-1 bg-[var(--bg-panel)] rounded-xl border border-[var(--border-subtle)] p-6 flex flex-col justify-center">
-                            <span className="text-[var(--text-secondary)] text-sm font-medium uppercase tracking-wider">Total Equity</span>
+                            <span className="text-[var(--text-secondary)] text-sm font-medium uppercase tracking-wider">{t('totalEquity')}</span>
                             <div className="text-4xl font-bold text-white mt-2 font-mono">
                                 {stats ? `$${stats.totalEquity.toLocaleString()}` : '$0.00'}
                             </div>
                             <div className={`mt-2 text-sm font-medium ${stats?.totalPL && stats.totalPL >= 0 ? 'text-[var(--color-success-text)]' : 'text-[var(--color-danger-text)]'}`}>
-                                {stats?.totalPL && stats.totalPL >= 0 ? '▲' : '▼'} {stats ? `$${Math.abs(stats.totalPL).toLocaleString()}` : '0.00'} All Time
+                                {stats?.totalPL && stats.totalPL >= 0 ? '▲' : '▼'} {stats ? `$${Math.abs(stats.totalPL).toLocaleString()}` : '0.00'} {t('allTime')}
                             </div>
                         </div>
 
@@ -144,7 +147,7 @@ export default function Dashboard() {
                     {/* Indices: Col 3 */}
                     <div className="md:col-span-3 h-[300px]">
                         <MarketFlowWidget
-                            title="Global Indices"
+                            title={t('globalIndices')}
                             items={[...(marketData?.indices?.us || []), ...(marketData?.indices?.hk || [])].slice(0, 5)}
                         />
                     </div>
@@ -157,7 +160,7 @@ export default function Dashboard() {
                     {/* Blue Chips: Col 3 */}
                     <div className="md:col-span-3 h-[300px]">
                         <MarketFlowWidget
-                            title="Blue Chips & Tech"
+                            title={t('blueChipsTech')}
                             items={marketData?.stocks?.slice(0, 5) || []}
                         />
                     </div>
@@ -165,18 +168,18 @@ export default function Dashboard() {
                     {/* --- ROW 3: Holdings Table (Full Width) --- */}
                     <div className="md:col-span-12 bg-[var(--bg-panel)] rounded-xl border border-[var(--border-subtle)] overflow-hidden">
                         <div className="px-6 py-4 border-b border-[var(--border-subtle)] flex items-center justify-between">
-                            <h3 className="font-bold text-white">Active Positions</h3>
-                            <button className="text-xs text-[var(--text-accent)] hover:text-white transition-colors">Manage</button>
+                            <h3 className="font-bold text-white">{t('activePositions')}</h3>
+                            <button className="text-xs text-[var(--text-accent)] hover:text-white transition-colors">{t('manage')}</button>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm text-left">
                                 <thead className="bg-[var(--bg-subtle)] text-[var(--text-secondary)]">
                                     <tr>
-                                        <th className="px-6 py-3 font-medium">Asset</th>
-                                        <th className="px-6 py-3 font-medium text-right">Price</th>
-                                        <th className="px-6 py-3 font-medium text-right">Qty</th>
-                                        <th className="px-6 py-3 font-medium text-right">Value</th>
-                                        <th className="px-6 py-3 font-medium text-right">P/L</th>
+                                        <th className="px-6 py-3 font-medium">{t('asset')}</th>
+                                        <th className="px-6 py-3 font-medium text-right">{t('price')}</th>
+                                        <th className="px-6 py-3 font-medium text-right">{t('qty')}</th>
+                                        <th className="px-6 py-3 font-medium text-right">{t('value')}</th>
+                                        <th className="px-6 py-3 font-medium text-right">{t('pl')}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-[var(--border-subtle)]">
@@ -192,7 +195,7 @@ export default function Dashboard() {
                                         </tr>
                                     )) : (
                                         <tr>
-                                            <td colSpan={5} className="px-6 py-8 text-center text-[var(--text-muted)]">No positions open.</td>
+                                            <td colSpan={5} className="px-6 py-8 text-center text-[var(--text-muted)]">{t('noPositions')}</td>
                                         </tr>
                                     )}
                                 </tbody>

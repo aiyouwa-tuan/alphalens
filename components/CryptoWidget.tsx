@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useLanguage } from '@/components/LanguageProvider';
 
 interface CryptoData {
     id: string;
@@ -11,6 +12,7 @@ interface CryptoData {
 }
 
 export default function CryptoWidget() {
+    const { t } = useLanguage();
     const [data, setData] = useState<CryptoData[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -22,11 +24,11 @@ export default function CryptoWidget() {
             .finally(() => setLoading(false));
     }, []);
 
-    if (loading) return <div className="h-full flex items-center justify-center text-[var(--text-muted)]">Loading Crypto...</div>;
+    if (loading) return <div className="h-full flex items-center justify-center text-[var(--text-muted)]">{t('loadingCrypto')}</div>;
 
     return (
         <div className="flex flex-col h-full bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-xl p-4">
-            <h3 className="text-sm font-semibold text-[var(--text-secondary)] mb-4 tracking-wider">CRYPTO ASSETS</h3>
+            <h3 className="text-sm font-semibold text-[var(--text-secondary)] mb-4 tracking-wider">{t('cryptoAssets')}</h3>
             <div className="flex flex-col gap-3">
                 {data.map((coin) => (
                     <div key={coin.id} className="flex items-center justify-between">

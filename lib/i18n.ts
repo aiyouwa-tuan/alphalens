@@ -45,7 +45,10 @@ export const translations = {
 
         // News
         loadingNews: "Loading news...",
-        noNews: "No news available."
+        noNews: "No news available.",
+        noPositions: "No positions open.",
+        noData: "No data available",
+        loadingCrypto: "Loading Crypto..."
     },
     zh: {
         // Layout
@@ -91,6 +94,9 @@ export const translations = {
 
         // News
         loadingNews: "正在加载新闻...",
-        noNews: "暂无新闻"
+        noNews: "暂无新闻",
+        noPositions: "暂无持仓",
+        noData: "暂无数据",
+        loadingCrypto: "正在加载加密货币..."
     }
 };
