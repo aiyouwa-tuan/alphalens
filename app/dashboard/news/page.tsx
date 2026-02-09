@@ -22,47 +22,50 @@ export default function NewsPage() {
     const [filteredNews, setFilteredNews] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        fetchNews();
-    }, []);
+    // Initial fetch handled by the dependency effect below
+    // useEffect(() => {
+    //    fetchNews(); 
+    // }, []);
 
-    useEffect(() => {
-        filterNews();
-    }, [selectedFilter, allNews]);
 
-    async function fetchNews() {
+
+    async function fetchNews(symbolId: string) {
         setLoading(true);
+        // Map 'all' to 'general' for the API
+        const querySymbol = symbolId === 'all' ? 'general' : symbolId;
+
         try {
-            const res = await fetch('/api/news/rss');
+            const res = await fetch(`/api/news?symbol=${querySymbol}`);
             const data = await res.json();
-            if (data.items) {
-                setAllNews(data.items);
+
+            if (data.news) {
+                // The API already translates and filters
+                setFilteredNews(data.news);
+            } else {
+                setFilteredNews([]);
             }
         } catch (error) {
-            console.error(error);
+            console.error("Error fetching news:", error);
+            setFilteredNews([]);
         } finally {
             setLoading(false);
         }
     }
 
-    function filterNews() {
-        const filter = STOCK_FILTERS.find(c => c.id === selectedFilter);
-        if (!filter) return;
+    // Effect to fetch when filter changes
+    useEffect(() => {
+        fetchNews(selectedFilter);
+    }, [selectedFilter]);
 
-        if (filter.id === 'all') {
-            setFilteredNews(allNews);
-            return;
-        }
-
-        const filtered = allNews.filter(item => {
-            // STRICT FILTERING: Only check the Title to ensure relevance
-            const text = (item.title || '').toLowerCase();
-            // Also check strict keywords (e.g. 'Apple' might match 'Pineapple', so we need word boundaries or specific checks if possible)
-            // For Chinese/English mix, simple includes is usually okay but strictness comes from "Title Only".
-            return filter.keywords.some(k => text.includes(k.toLowerCase()));
-        });
-        setFilteredNews(filtered);
-    }
+    // Validate if simple map is needed or if we should keep the structure
+    // The API returns: { headline, summary, url, datetime, source }
+    // We need to map it to our UI's expectation if different.
+    // UI expects: { id, title, link, pubDate, source, contentSnippet }
+    // Let's do a quick map in the render or state setting if needed. 
+    // Actually, let's look at the API response structure in 'app/api/news/route.ts'.
+    // It returns 'news' array. Finnhub items have 'headline', 'summary', 'url', 'datetime', 'source'.
+    // My UI uses 'item.title', 'item.link', 'item.pubDate'.
+    // I need to map it.
 
     return (
         <div className="p-6 max-w-7xl mx-auto min-h-screen">
@@ -118,7 +121,7 @@ export default function NewsPage() {
                             {filteredNews.map((item) => (
                                 <a
                                     key={item.id}
-                                    href={item.link}
+                                    href={item.url || item.link} // Handle both API and RSS legacy props just in case
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="group block bg-[var(--bg-panel)] border border-[var(--border-subtle)] hover:border-[var(--text-accent)] rounded-xl overflow-hidden transition-all duration-300 p-6"
@@ -129,14 +132,14 @@ export default function NewsPage() {
                                                 {item.source}
                                             </span>
                                             <span className="text-xs text-[var(--text-muted)]">
-                                                {new Date(item.pubDate).toLocaleString()}
+                                                {new Date(item.datetime * 1000 || item.pubDate).toLocaleString()}
                                             </span>
                                         </div>
                                         <h3 className="text-xl font-bold mb-3 text-white group-hover:text-[var(--text-accent)] transition-colors leading-snug">
-                                            {item.title}
+                                            {item.headline || item.title}
                                         </h3>
                                         <p className="text-sm text-[var(--text-secondary)] leading-relaxed line-clamp-3">
-                                            {item.contentSnippet || item.summary}
+                                            {item.summary || item.contentSnippet}
                                         </p>
                                         <div className="mt-4 flex items-center text-xs font-semibold text-[var(--text-accent)]">
                                             Read source <span className="ml-1 transition-transform group-hover:translate-x-1">→</span>
