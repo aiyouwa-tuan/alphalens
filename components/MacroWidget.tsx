@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useLanguage } from '@/components/LanguageProvider';
 
 interface MacroQuote {
     symbol: string;
@@ -10,6 +11,7 @@ interface MacroQuote {
 }
 
 export default function MacroWidget() {
+    const { t } = useLanguage();
     const [data, setData] = useState<MacroQuote[]>([]);
     const [loading, setLoading] = useState(true);
 

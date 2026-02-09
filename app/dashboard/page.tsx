@@ -130,7 +130,7 @@ export default function Dashboard() {
 
                         {/* Market Sentiment / News Widget */}
                         <div className="flex-[2] overflow-hidden">
-                            <NewsFeedWidget items={newsItems} />
+                            <NewsFeedWidget />
                         </div>
                     </div>
 
