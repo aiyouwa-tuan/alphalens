@@ -80,32 +80,38 @@ export default function AuthForm({ initialView = 'login' }: AuthFormProps) {
         setLoading(true);
 
         try {
+            // Supabase Auth Flow for Google Only
+            // For Email/Password, we now prefer the API Route (Proxy) for better connectivity in China
+            // and to unify server-side handling.
+
+            // However, we can keep the local check if we want, but to fix the User's "Err Connection Closed",
+            // we MUST use the proxy.
+
+            // SWAPPED LOGIC: Always use API Proxy for Email/Pass
+            const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
+            // Map 'email' to 'username' for legacy API structure
+            const res = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: email, password }),
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Authentication failed');
+
+            router.push('/dashboard');
+            router.refresh();
+
+            /*  Previous Client-Side Logic (Disabled for Connectivity Fix)
             if (supabase) {
-                // Supabase Auth Flow
                 const { error } = isLogin
                     ? await supabase.auth.signInWithPassword({ email, password })
                     : await supabase.auth.signUp({ email, password });
-
                 if (error) throw error;
-
-                // On success
                 router.push('/dashboard');
                 router.refresh();
-            } else {
-                // Fallback to Legacy API (mock)
-                const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-                // Map 'email' to 'username' for legacy API
-                const res = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: email, password }),
-                });
-
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || 'Authentication failed');
-
-                router.push('/dashboard');
-            }
+            } else { ... } 
+            */
         } catch (err: any) {
             setErrors({ general: err.message || 'Something went wrong' });
         } finally {

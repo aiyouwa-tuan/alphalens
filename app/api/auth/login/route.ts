@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { findUserByUsername } from '@/lib/db';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function POST(request: Request) {
     try {
@@ -8,24 +12,29 @@ export async function POST(request: Request) {
         const { username, password } = body;
 
         if (!username || !password) {
-            return NextResponse.json({ error: 'Username and password required' }, { status: 400 });
+            return NextResponse.json({ error: 'Email and password required' }, { status: 400 });
         }
 
-        const user = await findUserByUsername(username);
-        if (!user || user.passwordHash !== password) {
+        // Server-Side Login via Supabase
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email: username,
+            password: password,
+        });
+
+        if (error || !data.user) {
             return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
         }
 
         // Set session cookie
         const cookieStore = await cookies();
-        cookieStore.set('userId', user.id, {
+        cookieStore.set('userId', data.user.id, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             maxAge: 60 * 60 * 24 * 7, // 1 week
             path: '/',
         });
 
-        return NextResponse.json({ success: true, user: { id: user.id, username: user.username } });
+        return NextResponse.json({ success: true, user: { id: data.user.id, username: data.user.email } });
     } catch (error) {
         console.error('Login error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
