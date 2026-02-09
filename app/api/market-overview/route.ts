@@ -23,7 +23,8 @@ export async function GET() {
             ...INDICES.CN,
             ...ETFS,
             ...STOCKS,
-            '^TNX'
+            '^TNX',
+            'GC=F', 'BTC-USD'
         ];
 
         const data = await getQuotes(allSymbols);
@@ -40,6 +41,10 @@ export async function GET() {
                 hk: INDICES.HK.map(sym => ({ symbol: sym, ...data[sym] })),
                 cn: INDICES.CN.map(sym => ({ symbol: sym, ...data[sym] }))
             },
+            commodities: [
+                { symbol: 'Gold', ...data['GC=F'], change: data['GC=F']?.change || 0, changePercent: data['GC=F']?.changePercent || 0, price: data['GC=F']?.price || 0 },
+                { symbol: 'BTC', ...data['BTC-USD'], change: data['BTC-USD']?.change || 0, changePercent: data['BTC-USD']?.changePercent || 0, price: data['BTC-USD']?.price || 0 }
+            ],
             etfs: etfData,
             stocks: sortedStocks,
             rates: [
