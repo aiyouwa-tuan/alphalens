@@ -3,11 +3,14 @@ import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
 import { saveUser } from '@/lib/db';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 export async function POST(request: Request) {
+    if (!supabaseUrl || !supabaseKey) {
+        return NextResponse.json({ error: 'Supabase configuration missing on server' }, { status: 500 });
+    }
+    const supabase = createClient(supabaseUrl, supabaseKey);
     try {
         const body = await request.json();
         const { username, password } = body; // 'username' here effectively captures email from client
