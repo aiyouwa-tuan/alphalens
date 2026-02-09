@@ -31,7 +31,9 @@ export default function MacroWidget() {
             <div className="grid grid-cols-2 gap-4">
                 {data.map((item) => (
                     <div key={item.symbol} className="flex flex-col">
-                        <span className="text-xs text-[var(--text-muted)] truncate" title={item.shortName}>{item.shortName}</span>
+                        <span className="text-xs text-[var(--text-muted)] truncate" title={item.shortName}>
+                            {t(item.symbol as any) !== item.symbol ? t(item.symbol as any) : item.shortName}
+                        </span>
                         <div className="flex items-baseline gap-2">
                             <span className="text-lg font-bold text-white">
                                 {item.regularMarketPrice?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

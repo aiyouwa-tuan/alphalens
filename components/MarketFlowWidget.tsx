@@ -49,7 +49,9 @@ export default function MarketFlowWidget({ title, items, isLoading }: MarketFlow
                             <tr key={item.symbol} className="border-b border-[var(--border-subtle)] last:border-0 hover:bg-[var(--bg-subtle)] transition-colors">
                                 <td className="px-4 py-3">
                                     <div className="flex flex-col">
-                                        <span className="font-bold text-[var(--text-primary)]">{item.symbol}</span>
+                                        <span className="font-bold text-[var(--text-primary)]">
+                                            {t(item.symbol as any) !== item.symbol ? t(item.symbol as any) : item.symbol}
+                                        </span>
                                         <span className="text-[10px] text-[var(--text-secondary)]">{item.name}</span>
                                     </div>
                                 </td>
