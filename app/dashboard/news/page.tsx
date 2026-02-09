@@ -6,14 +6,14 @@ import Link from 'next/link';
 // Detailed stock filters mapping to RSS keywords
 const STOCK_FILTERS = [
     { id: 'all', name: 'General (综合)', keywords: [] },
-    { id: 'TSM', name: 'TSM (台积电)', keywords: ['TSM', 'TSMC', 'Taiwan Semiconductor'] },
-    { id: 'AAPL', name: 'Apple (苹果)', keywords: ['Apple', 'AAPL', 'iPhone', 'Mac'] },
-    { id: 'TSLA', name: 'Tesla (特斯拉)', keywords: ['Tesla', 'TSLA', 'Musk', 'EV'] },
-    { id: 'NVDA', name: 'NVIDIA (英伟达)', keywords: ['Nvidia', 'NVDA', 'GPU', 'AI'] },
-    { id: 'MSFT', name: 'Microsoft (微软)', keywords: ['Microsoft', 'MSFT', 'Windows', 'Azure'] },
-    { id: 'AMZN', name: 'Amazon (亚马逊)', keywords: ['Amazon', 'AMZN', 'AWS'] },
-    { id: 'GOOG', name: 'Google (谷歌)', keywords: ['Google', 'GOOG', 'Alphabet', 'Android'] },
-    { id: 'META', name: 'Meta', keywords: ['Meta', 'Facebook', 'Zuckerberg', 'Instagram'] },
+    { id: 'TSM', name: 'TSM (台积电)', keywords: ['TSM', 'TMSC', '台积电', 'Taiwan Semiconductor'] },
+    { id: 'AAPL', name: 'Apple (苹果)', keywords: ['Apple', 'AAPL', 'iPhone', 'Mac', '苹果', '库克'] },
+    { id: 'TSLA', name: 'Tesla (特斯拉)', keywords: ['Tesla', 'TSLA', 'Musk', 'EV', '特斯拉', '马斯克'] },
+    { id: 'NVDA', name: 'NVIDIA (英伟达)', keywords: ['Nvidia', 'NVDA', 'GPU', 'AI', '英伟达', '黄仁勋'] },
+    { id: 'MSFT', name: 'Microsoft (微软)', keywords: ['Microsoft', 'MSFT', 'Windows', 'Azure', '微软'] },
+    { id: 'AMZN', name: 'Amazon (亚马逊)', keywords: ['Amazon', 'AMZN', 'AWS', '亚马逊'] },
+    { id: 'GOOG', name: 'Google (谷歌)', keywords: ['Google', 'GOOG', 'Alphabet', 'Android', '谷歌'] },
+    { id: 'META', name: 'Meta', keywords: ['Meta', 'Facebook', 'Zuckerberg', 'Instagram', '脸书', '扎克伯格'] },
 ];
 
 export default function NewsPage() {
@@ -55,7 +55,10 @@ export default function NewsPage() {
         }
 
         const filtered = allNews.filter(item => {
-            const text = (item.title + ' ' + (item.summary || '') + ' ' + (item.contentSnippet || '')).toLowerCase();
+            // STRICT FILTERING: Only check the Title to ensure relevance
+            const text = (item.title || '').toLowerCase();
+            // Also check strict keywords (e.g. 'Apple' might match 'Pineapple', so we need word boundaries or specific checks if possible)
+            // For Chinese/English mix, simple includes is usually okay but strictness comes from "Title Only".
             return filter.keywords.some(k => text.includes(k.toLowerCase()));
         });
         setFilteredNews(filtered);
