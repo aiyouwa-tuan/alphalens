@@ -1,9 +1,9 @@
 import AuthForm from '@/components/AuthForm';
 
-export default function LoginPage() {
+export default function RegisterPage() {
     return (
         <div className="flex items-center justify-center min-h-screen bg-[var(--bg-app)]">
-            <AuthForm initialView="login" />
+            <AuthForm initialView="register" />
         </div>
     );
 }

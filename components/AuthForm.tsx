@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 
@@ -9,13 +9,23 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
-export default function AuthForm() {
+interface AuthFormProps {
+    initialView?: 'login' | 'register';
+}
+
+export default function AuthForm({ initialView = 'login' }: AuthFormProps) {
     const router = useRouter();
-    const [isLogin, setIsLogin] = useState(true);
+    const [isLogin, setIsLogin] = useState(initialView === 'login');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({});
     const [loading, setLoading] = useState(false);
+
+    // Sync state if prop changes
+    useEffect(() => {
+        setIsLogin(initialView === 'login');
+        setErrors({});
+    }, [initialView]);
 
     const validate = () => {
         const newErrors: typeof errors = {};
@@ -32,12 +42,11 @@ export default function AuthForm() {
         if (!password) {
             newErrors.password = 'Password is required';
         } else if (!isLogin) {
-            // Stronger rules for registration
+            // Registration: Stronger rules
             if (password.length < 8) {
                 newErrors.password = 'Password must be at least 8 characters';
             }
-            // Optional: Require number/symbol
-            // if (!/(?=.*\d)(?=.*[a-z])(?=.*[A-Z])/.test(password)) { ... }
+            // Optional: Require number/symbol if desired, but length is key for now.
         }
 
         setErrors(newErrors);
@@ -60,7 +69,6 @@ export default function AuthForm() {
             setErrors({ general: error.message });
             setLoading(false);
         }
-        // Redirect happens automatically
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -103,6 +111,14 @@ export default function AuthForm() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const toggleMode = () => {
+        const target = isLogin ? '/register' : '/login';
+        router.push(target);
+        // Fallback state change if routing is slow or handled in-component
+        setIsLogin(!isLogin);
+        setErrors({});
     };
 
     return (
@@ -176,7 +192,7 @@ export default function AuthForm() {
             <button
                 onClick={handleGoogleLogin}
                 type="button"
-                className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-white hover:bg-gray-50 text-gray-900 font-medium rounded-lg transition-colors"
+                className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-white hover:bg-gray-50 text-gray-900 font-medium rounded-lg transition-colors border border-gray-200"
             >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                     <path
@@ -196,14 +212,14 @@ export default function AuthForm() {
                         d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                     />
                 </svg>
-                Google
+                Sign in with Google
             </button>
 
             {/* Toggle Mode */}
             <div className="mt-8 text-center text-sm text-[var(--text-secondary)]">
                 {isLogin ? "Don't have an account? " : "Already have an account? "}
                 <button
-                    onClick={() => { setIsLogin(!isLogin); setErrors({}); }}
+                    onClick={toggleMode}
                     className="text-[var(--text-accent)] hover:underline font-semibold ml-1"
                 >
                     {isLogin ? 'Sign up' : 'Log in'}

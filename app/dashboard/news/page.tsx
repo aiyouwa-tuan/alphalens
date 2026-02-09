@@ -3,16 +3,21 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-// Predefined list of interesting symbols (Mapped to keywords for RSS filtering)
-const CATEGORIES = [
-    { id: 'all', name: 'Top Headlines', keywords: [] },
-    { id: 'tech', name: 'Technology', keywords: ['AI', 'Tech', 'Apple', 'Nvidia', 'Microsoft', 'Google', 'Meta', 'AMD', 'Intel'] },
-    { id: 'finance', name: 'Markets', keywords: ['Stock', 'Market', 'Fed', 'Rates', 'Economy'] },
-    { id: 'geopolitics', name: 'Geopolitics', keywords: ['China', 'US', 'War', 'Defense', 'Policy'] },
+// Detailed stock filters mapping to RSS keywords
+const STOCK_FILTERS = [
+    { id: 'all', name: 'General (综合)', keywords: [] },
+    { id: 'TSM', name: 'TSM (台积电)', keywords: ['TSM', 'TSMC', 'Taiwan Semiconductor'] },
+    { id: 'AAPL', name: 'Apple (苹果)', keywords: ['Apple', 'AAPL', 'iPhone', 'Mac'] },
+    { id: 'TSLA', name: 'Tesla (特斯拉)', keywords: ['Tesla', 'TSLA', 'Musk', 'EV'] },
+    { id: 'NVDA', name: 'NVIDIA (英伟达)', keywords: ['Nvidia', 'NVDA', 'GPU', 'AI'] },
+    { id: 'MSFT', name: 'Microsoft (微软)', keywords: ['Microsoft', 'MSFT', 'Windows', 'Azure'] },
+    { id: 'AMZN', name: 'Amazon (亚马逊)', keywords: ['Amazon', 'AMZN', 'AWS'] },
+    { id: 'GOOG', name: 'Google (谷歌)', keywords: ['Google', 'GOOG', 'Alphabet', 'Android'] },
+    { id: 'META', name: 'Meta', keywords: ['Meta', 'Facebook', 'Zuckerberg', 'Instagram'] },
 ];
 
 export default function NewsPage() {
-    const [selectedCategory, setSelectedCategory] = useState('all');
+    const [selectedFilter, setSelectedFilter] = useState('all');
     const [allNews, setAllNews] = useState<any[]>([]);
     const [filteredNews, setFilteredNews] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -23,7 +28,7 @@ export default function NewsPage() {
 
     useEffect(() => {
         filterNews();
-    }, [selectedCategory, allNews]);
+    }, [selectedFilter, allNews]);
 
     async function fetchNews() {
         setLoading(true);
@@ -41,17 +46,17 @@ export default function NewsPage() {
     }
 
     function filterNews() {
-        if (selectedCategory === 'all') {
+        const filter = STOCK_FILTERS.find(c => c.id === selectedFilter);
+        if (!filter) return;
+
+        if (filter.id === 'all') {
             setFilteredNews(allNews);
             return;
         }
 
-        const category = CATEGORIES.find(c => c.id === selectedCategory);
-        if (!category) return;
-
         const filtered = allNews.filter(item => {
             const text = (item.title + ' ' + (item.summary || '') + ' ' + (item.contentSnippet || '')).toLowerCase();
-            return category.keywords.some(k => text.includes(k.toLowerCase()));
+            return filter.keywords.some(k => text.includes(k.toLowerCase()));
         });
         setFilteredNews(filtered);
     }
@@ -73,18 +78,18 @@ export default function NewsPage() {
                 {/* Sidebar Filter */}
                 <div className="w-full md:w-64 flex-shrink-0">
                     <div className="bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-xl p-4 sticky top-6">
-                        <h3 className="font-bold text-[var(--text-secondary)] mb-4 text-xs uppercase tracking-wider">News Sections</h3>
+                        <h3 className="font-bold text-[var(--text-secondary)] mb-4 text-xs uppercase tracking-wider">Market Focus</h3>
                         <div className="space-y-1">
-                            {CATEGORIES.map(cat => (
+                            {STOCK_FILTERS.map(item => (
                                 <button
-                                    key={cat.id}
-                                    onClick={() => setSelectedCategory(cat.id)}
-                                    className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${selectedCategory === cat.id
+                                    key={item.id}
+                                    onClick={() => setSelectedFilter(item.id)}
+                                    className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${selectedFilter === item.id
                                         ? 'bg-blue-600 text-white shadow-lg'
                                         : 'text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] hover:text-white'
                                         }`}
                                 >
-                                    {cat.name}
+                                    {item.name}
                                 </button>
                             ))}
                         </div>
@@ -101,7 +106,9 @@ export default function NewsPage() {
                         </div>
                     ) : filteredNews.length === 0 ? (
                         <div className="text-center py-20 text-[var(--text-muted)] bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-xl">
-                            No news found for this category recently.
+                            {selectedFilter === 'all'
+                                ? 'Loading latest news...'
+                                : `No recent news mentions found for ${STOCK_FILTERS.find(f => f.id === selectedFilter)?.name}.`}
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 gap-4">
