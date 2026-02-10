@@ -22,13 +22,76 @@ export default function ManageFiltersModal({ isOpen, onClose, filters, onAdd, on
     const [newName, setNewName] = useState('');
     const [newId, setNewId] = useState('');
     const [newKeywords, setNewKeywords] = useState('');
+    const [isSearching, setIsSearching] = useState(false);
+
+    // Debounce timer ref
+    const searchTimeout = React.useRef<NodeJS.Timeout | null>(null);
 
     if (!isOpen) return null;
+
+    // Smart Auto-fill Logic
+    const performSearch = async (query: string, type: 'name' | 'id') => {
+        if (!query || query.length < 2) return;
+
+        setIsSearching(true);
+        try {
+            const res = await fetch(`/api/market/search?q=${encodeURIComponent(query)}`);
+            const data = await res.json();
+
+            if (data.results && data.results.length > 0) {
+                const bestMatch = data.results[0];
+
+                // Only auto-fill empty fields or fields not manually edited recently (simplification: just fill if empty)
+                if (type === 'name') {
+                    if (!newId) setNewId(bestMatch.symbol);
+                    if (!newKeywords) setNewKeywords(generateKeywords(bestMatch));
+                } else if (type === 'id') {
+                    if (!newName) setNewName(bestMatch.name);
+                    if (!newKeywords) setNewKeywords(generateKeywords(bestMatch));
+                }
+            }
+        } catch (error) {
+            console.error("Auto-fill search failed", error);
+        } finally {
+            setIsSearching(false);
+        }
+    };
+
+    const generateKeywords = (match: any) => {
+        const parts = [
+            match.name,
+            match.symbol,
+            match.name.split(' ')[0] // First word of company name
+        ];
+        // Remove duplicates and joins
+        const unique = [...new Set(parts.filter(Boolean))];
+        return unique.join(', ');
+    };
+
+    const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value;
+        setNewName(val);
+
+        // Debounce search
+        if (searchTimeout.current) clearTimeout(searchTimeout.current);
+        searchTimeout.current = setTimeout(() => {
+            if (val && !newId) performSearch(val, 'name');
+        }, 800);
+    };
+
+    const handleIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value;
+        setNewId(val);
+
+        if (searchTimeout.current) clearTimeout(searchTimeout.current);
+        searchTimeout.current = setTimeout(() => {
+            if (val && !newName) performSearch(val, 'id');
+        }, 800);
+    };
 
     const handleAdd = () => {
         if (!newId || !newId.trim()) return;
 
-        // Auto-generate keywords if empty? No, require at least one or default to ID.
         const keywordsArray = newKeywords
             ? newKeywords.split(',').map(k => k.trim()).filter(Boolean)
             : [newId, newName].filter(Boolean);
@@ -39,7 +102,6 @@ export default function ManageFiltersModal({ isOpen, onClose, filters, onAdd, on
             keywords: keywordsArray
         });
 
-        // Reset form
         setNewName('');
         setNewId('');
         setNewKeywords('');
@@ -84,7 +146,12 @@ export default function ManageFiltersModal({ isOpen, onClose, filters, onAdd, on
                     </div>
 
                     {/* Add New */}
-                    <div className="bg-[var(--bg-subtle)]/50 p-4 rounded-xl border border-[var(--border-subtle)]">
+                    <div className="bg-[var(--bg-subtle)]/50 p-4 rounded-xl border border-[var(--border-subtle)] relative">
+                        {isSearching && (
+                            <div className="absolute top-2 right-2">
+                                <span className="animate-spin h-4 w-4 border-2 border-[var(--text-accent)] border-t-transparent rounded-full block"></span>
+                            </div>
+                        )}
                         <h3 className="text-sm font-semibold text-[var(--text-accent)] mb-4 uppercase tracking-wider">{t('addCompany')}</h3>
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
@@ -93,7 +160,7 @@ export default function ManageFiltersModal({ isOpen, onClose, filters, onAdd, on
                                     <input
                                         type="text"
                                         value={newName}
-                                        onChange={e => setNewName(e.target.value)}
+                                        onChange={handleNameChange}
                                         className="w-full bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-lg px-3 py-2 text-sm text-white focus:border-[var(--text-accent)] outline-none"
                                         placeholder="Tesla"
                                     />
@@ -103,7 +170,7 @@ export default function ManageFiltersModal({ isOpen, onClose, filters, onAdd, on
                                     <input
                                         type="text"
                                         value={newId}
-                                        onChange={e => setNewId(e.target.value)}
+                                        onChange={handleIdChange}
                                         className="w-full bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-lg px-3 py-2 text-sm text-white focus:border-[var(--text-accent)] outline-none font-mono"
                                         placeholder="TSLA"
                                     />
