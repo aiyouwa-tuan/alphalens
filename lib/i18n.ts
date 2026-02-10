@@ -59,7 +59,27 @@ export const translations = {
         "^DJI": "Dow Jones",
         "^IXIC": "Nasdaq",
         "^GSPC": "S&P 500",
-        "^HSI": "Hang Seng"
+        "^HSI": "Hang Seng",
+
+        // News Page
+        marketHeadlines: "Market Headlines",
+        newsSubtitle: "Real-time intelligence from global sources (Situation Monitor)",
+        backToDashboard: "← Back to Dashboard",
+        marketFocus: "Market Focus",
+        loadingLatestNews: "Loading latest news...",
+        noRecentNews: "No recent news mentions found for",
+        readSource: "Read source",
+
+        // Filters
+        filter_all: "General",
+        filter_TSM: "TSM",
+        filter_AAPL: "Apple",
+        filter_TSLA: "Tesla",
+        filter_NVDA: "NVIDIA",
+        filter_MSFT: "Microsoft",
+        filter_AMZN: "Amazon",
+        filter_GOOG: "Google",
+        filter_META: "Meta"
     },
     zh: {
         // Layout
@@ -119,6 +139,26 @@ export const translations = {
         "^DJI": "道琼斯",
         "^IXIC": "纳斯达克",
         "^GSPC": "标普500",
-        "^HSI": "恒生指数"
+        "^HSI": "恒生指数",
+
+        // News Page
+        marketHeadlines: "市场头条",
+        newsSubtitle: "来自全球资源的实时情报（态势监控）",
+        backToDashboard: "← 返回仪表盘",
+        marketFocus: "市场焦点",
+        loadingLatestNews: "正在加载最新新闻...",
+        noRecentNews: "未找到近期新闻：",
+        readSource: "阅读原文",
+
+        // Filters
+        filter_all: "综合",
+        filter_TSM: "台积电 (TSM)",
+        filter_AAPL: "苹果 (Apple)",
+        filter_TSLA: "特斯拉 (Tesla)",
+        filter_NVDA: "英伟达 (NVIDIA)",
+        filter_MSFT: "微软 (Microsoft)",
+        filter_AMZN: "亚马逊 (Amazon)",
+        filter_GOOG: "谷歌 (Google)",
+        filter_META: "Meta"
     }
 };

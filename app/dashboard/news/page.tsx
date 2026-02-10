@@ -2,32 +2,32 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useLanguage } from '@/components/LanguageProvider';
 
 // Detailed stock filters mapping to RSS keywords
 const STOCK_FILTERS = [
-    { id: 'all', name: 'General (综合)', keywords: [] },
-    { id: 'TSM', name: 'TSM (台积电)', keywords: ['TSM', 'TMSC', '台积电', 'Taiwan Semiconductor'] },
-    { id: 'AAPL', name: 'Apple (苹果)', keywords: ['Apple', 'AAPL', 'iPhone', 'Mac', '苹果', '库克'] },
-    { id: 'TSLA', name: 'Tesla (特斯拉)', keywords: ['Tesla', 'TSLA', 'Musk', 'EV', '特斯拉', '马斯克'] },
-    { id: 'NVDA', name: 'NVIDIA (英伟达)', keywords: ['Nvidia', 'NVDA', 'GPU', 'AI', '英伟达', '黄仁勋'] },
-    { id: 'MSFT', name: 'Microsoft (微软)', keywords: ['Microsoft', 'MSFT', 'Windows', 'Azure', '微软'] },
-    { id: 'AMZN', name: 'Amazon (亚马逊)', keywords: ['Amazon', 'AMZN', 'AWS', '亚马逊'] },
-    { id: 'GOOG', name: 'Google (谷歌)', keywords: ['Google', 'GOOG', 'Alphabet', 'Android', '谷歌'] },
-    { id: 'META', name: 'Meta', keywords: ['Meta', 'Facebook', 'Zuckerberg', 'Instagram', '脸书', '扎克伯格'] },
+    { id: 'all', keywords: [] },
+    { id: 'TSM', keywords: ['TSM', 'TMSC', '台积电', 'Taiwan Semiconductor'] },
+    { id: 'AAPL', keywords: ['Apple', 'AAPL', 'iPhone', 'Mac', '苹果', '库克'] },
+    { id: 'TSLA', keywords: ['Tesla', 'TSLA', 'Musk', 'EV', '特斯拉', '马斯克'] },
+    { id: 'NVDA', keywords: ['Nvidia', 'NVDA', 'GPU', 'AI', '英伟达', '黄仁勋'] },
+    { id: 'MSFT', keywords: ['Microsoft', 'MSFT', 'Windows', 'Azure', '微软'] },
+    { id: 'AMZN', keywords: ['Amazon', 'AMZN', 'AWS', '亚马逊'] },
+    { id: 'GOOG', keywords: ['Google', 'GOOG', 'Alphabet', 'Android', '谷歌'] },
+    { id: 'META', keywords: ['Meta', 'Facebook', 'Zuckerberg', 'Instagram', '脸书', '扎克伯格'] },
 ];
 
 export default function NewsPage() {
+    const { t, language, setLanguage } = useLanguage();
     const [selectedFilter, setSelectedFilter] = useState('all');
     const [allNews, setAllNews] = useState<any[]>([]);
     const [filteredNews, setFilteredNews] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
 
-    // Initial fetch handled by the dependency effect below
-    // useEffect(() => {
-    //    fetchNews(); 
-    // }, []);
-
-
+    // Helper to get translated filter name
+    const getFilterName = (id: string) => {
+        return t(`filter_${id}` as any);
+    };
 
     async function fetchNews(symbolId: string) {
         setLoading(true);
@@ -35,7 +35,7 @@ export default function NewsPage() {
         const querySymbol = symbolId === 'all' ? 'general' : symbolId;
 
         try {
-            const res = await fetch(`/api/news?symbol=${querySymbol}`);
+            const res = await fetch(`/api/news?symbol=${querySymbol}&lang=${language}`);
             const data = await res.json();
 
             if (data.news) {
@@ -52,39 +52,37 @@ export default function NewsPage() {
         }
     }
 
-    // Effect to fetch when filter changes
+    // Effect to fetch when filter or language changes
     useEffect(() => {
         fetchNews(selectedFilter);
-    }, [selectedFilter]);
-
-    // Validate if simple map is needed or if we should keep the structure
-    // The API returns: { headline, summary, url, datetime, source }
-    // We need to map it to our UI's expectation if different.
-    // UI expects: { id, title, link, pubDate, source, contentSnippet }
-    // Let's do a quick map in the render or state setting if needed. 
-    // Actually, let's look at the API response structure in 'app/api/news/route.ts'.
-    // It returns 'news' array. Finnhub items have 'headline', 'summary', 'url', 'datetime', 'source'.
-    // My UI uses 'item.title', 'item.link', 'item.pubDate'.
-    // I need to map it.
+    }, [selectedFilter, language]);
 
     return (
         <div className="p-6 max-w-7xl mx-auto min-h-screen">
             {/* Header */}
             <div className="flex justify-between items-center mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold mb-2 text-white">Market Headlines</h1>
-                    <p className="text-[var(--text-secondary)]">Real-time intelligence from global sources (Situation Monitor)</p>
+                    <h1 className="text-3xl font-bold mb-2 text-white">{t('marketHeadlines')}</h1>
+                    <p className="text-[var(--text-secondary)]">{t('newsSubtitle')}</p>
                 </div>
-                <Link href="/dashboard" className="px-4 py-2 bg-[var(--bg-panel)] border border-[var(--border-subtle)] hover:bg-[var(--bg-subtle)] rounded-lg transition-colors text-sm font-semibold text-white">
-                    ← Back to Dashboard
-                </Link>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => setLanguage(language === 'en' ? 'zh' : 'en')}
+                        className="px-3 py-2 border border-[var(--border-subtle)] hover:bg-[var(--bg-subtle)] rounded-lg transition-colors text-sm font-semibold text-white"
+                    >
+                        {language === 'en' ? 'CN' : 'EN'}
+                    </button>
+                    <Link href="/dashboard" className="px-4 py-2 bg-[var(--bg-panel)] border border-[var(--border-subtle)] hover:bg-[var(--bg-subtle)] rounded-lg transition-colors text-sm font-semibold text-white">
+                        {t('backToDashboard')}
+                    </Link>
+                </div>
             </div>
 
             <div className="flex flex-col md:flex-row gap-8">
                 {/* Sidebar Filter */}
                 <div className="w-full md:w-64 flex-shrink-0">
                     <div className="bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-xl p-4 sticky top-6">
-                        <h3 className="font-bold text-[var(--text-secondary)] mb-4 text-xs uppercase tracking-wider">Market Focus</h3>
+                        <h3 className="font-bold text-[var(--text-secondary)] mb-4 text-xs uppercase tracking-wider">{t('marketFocus')}</h3>
                         <div className="space-y-1">
                             {STOCK_FILTERS.map(item => (
                                 <button
@@ -95,7 +93,7 @@ export default function NewsPage() {
                                         : 'text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] hover:text-white'
                                         }`}
                                 >
-                                    {item.name}
+                                    {getFilterName(item.id)}
                                 </button>
                             ))}
                         </div>
@@ -113,15 +111,15 @@ export default function NewsPage() {
                     ) : filteredNews.length === 0 ? (
                         <div className="text-center py-20 text-[var(--text-muted)] bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-xl">
                             {selectedFilter === 'all'
-                                ? 'Loading latest news...'
-                                : `No recent news mentions found for ${STOCK_FILTERS.find(f => f.id === selectedFilter)?.name}.`}
+                                ? t('loadingLatestNews')
+                                : `${t('noRecentNews')} ${getFilterName(selectedFilter)}`}
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 gap-4">
                             {filteredNews.map((item) => (
                                 <a
                                     key={item.id}
-                                    href={item.url || item.link} // Handle both API and RSS legacy props just in case
+                                    href={item.url || item.link}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="group block bg-[var(--bg-panel)] border border-[var(--border-subtle)] hover:border-[var(--text-accent)] rounded-xl overflow-hidden transition-all duration-300 p-6"
@@ -142,7 +140,7 @@ export default function NewsPage() {
                                             {item.summary || item.contentSnippet}
                                         </p>
                                         <div className="mt-4 flex items-center text-xs font-semibold text-[var(--text-accent)]">
-                                            Read source <span className="ml-1 transition-transform group-hover:translate-x-1">→</span>
+                                            {t('readSource')} <span className="ml-1 transition-transform group-hover:translate-x-1">→</span>
                                         </div>
                                     </div>
                                 </a>
