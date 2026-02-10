@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
-import YahooFinance from 'yahoo-finance2';
-
-const yahooFinance = new YahooFinance();
+import yahooFinance from 'yahoo-finance2';
+// @ts-ignore
+import translate from 'google-translate-api-x';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q');
     const lang = searchParams.get('lang') || 'en-US'; // Default to English if not specified
+    const isChinese = lang.startsWith('zh');
 
     if (!query) {
         return NextResponse.json({ results: [] });
@@ -17,20 +18,48 @@ export async function GET(request: Request) {
             quotesCount: 5,
             newsCount: 0,
             lang: lang // Pass language to Yahoo Finance
-        });
+        }) as any;
 
-        // Filter and map results to a useful format
-        const formatted = results.quotes.map((quote: any) => ({
-            symbol: quote.symbol,
+        if (!results.quotes) {
+            return NextResponse.json({ results: [] });
+        }
+
+        // Filter valid quotes first
+        const quotes = results.quotes.filter((q: any) =>
+            q.quoteType === 'EQUITY' || q.quoteType === 'ETF' || q.quoteType === 'INDEX'
+        );
+
+        // Process translations in parallel
+        const formatted = await Promise.all(quotes.map(async (quote: any) => {
             // Prefer shortname (e.g. "Tootsie Roll") over longname (e.g. "Tootsie Roll Industries, Inc.")
-            name: quote.shortname || quote.longname || quote.symbol,
-            type: quote.quoteType,
-            exchange: quote.exchange
-        })).filter((q: any) => q.type === 'EQUITY' || q.type === 'ETF' || q.type === 'INDEX');
+            let name = quote.shortname || quote.longname || quote.symbol;
+
+            // If user requested Chinese but we got English (ASCII names), try to translate
+            // Only translate if it looks like a company name (not just a symbol) and is all ASCII
+            if (isChinese && name && /^[\x00-\x7F]+$/.test(name) && name !== quote.symbol) {
+                try {
+                    // Force translate to zh-CN
+                    const res = await translate(name, { to: 'zh-CN' }) as any;
+                    // Only use translation if it's different and not empty
+                    if (res.text && res.text !== name) {
+                        name = res.text;
+                    }
+                } catch (e) {
+                    console.error(`Translation failed for ${name}:`, e);
+                }
+            }
+
+            return {
+                symbol: quote.symbol,
+                name: name,
+                type: quote.quoteType,
+                exchange: quote.exchange
+            };
+        }));
 
         return NextResponse.json({ results: formatted });
     } catch (error) {
         console.error('Search API Error:', error);
-        return NextResponse.json({ error: 'Failed to search' }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to fetch search results' }, { status: 500 });
     }
 }
