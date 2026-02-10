@@ -29,6 +29,24 @@ export default function ManageFiltersModal({ isOpen, onClose, filters, onAdd, on
 
     if (!isOpen) return null;
 
+    const cleanCompanyName = (name: string) => {
+        if (!name) return '';
+        // Remove common suffixes
+        return name
+            .replace(/,?\s*Inc\.?$/i, '')
+            .replace(/,?\s*Corp\.?$/i, '')
+            .replace(/,?\s*Corporation$/i, '')
+            .replace(/,?\s*Ltd\.?$/i, '')
+            .replace(/,?\s*Limited$/i, '')
+            .replace(/,?\s*Co\.?$/i, '')
+            .replace(/,?\s*Company$/i, '')
+            .replace(/,?\s*PLC$/i, '')
+            .replace(/,?\s*NV$/i, '')
+            .replace(/,?\s*SA$/i, '')
+            .replace(/\s+-\s+.*$/, '') // Remove " - Class A" etc
+            .trim();
+    };
+
     // Smart Auto-fill Logic
     const performSearch = async (query: string, type: 'name' | 'id') => {
         if (!query || query.length < 2) return;
@@ -42,14 +60,15 @@ export default function ManageFiltersModal({ isOpen, onClose, filters, onAdd, on
 
             if (data.results && data.results.length > 0) {
                 const bestMatch = data.results[0];
+                const cleanedName = cleanCompanyName(bestMatch.name);
 
                 // Only auto-fill empty fields or fields not manually edited recently (simplification: just fill if empty)
                 if (type === 'name') {
                     if (!newId) setNewId(bestMatch.symbol);
-                    if (!newKeywords) setNewKeywords(generateKeywords(bestMatch));
+                    if (!newKeywords) setNewKeywords(generateKeywords({ ...bestMatch, name: cleanedName }));
                 } else if (type === 'id') {
-                    if (!newName) setNewName(bestMatch.name);
-                    if (!newKeywords) setNewKeywords(generateKeywords(bestMatch));
+                    if (!newName) setNewName(cleanedName);
+                    if (!newKeywords) setNewKeywords(generateKeywords({ ...bestMatch, name: cleanedName }));
                 }
             }
         } catch (error) {
@@ -94,13 +113,15 @@ export default function ManageFiltersModal({ isOpen, onClose, filters, onAdd, on
     const handleAdd = () => {
         if (!newId || !newId.trim()) return;
 
+        const finalName = newName.trim() || newId.trim(); // Fallback to ID if name empty
+
         const keywordsArray = newKeywords
             ? newKeywords.split(',').map(k => k.trim()).filter(Boolean)
-            : [newId, newName].filter(Boolean);
+            : [newId, finalName].filter(Boolean);
 
         onAdd({
             id: newId.trim().toUpperCase(),
-            name: newName.trim(),
+            name: finalName,
             keywords: keywordsArray
         });
 
@@ -108,6 +129,8 @@ export default function ManageFiltersModal({ isOpen, onClose, filters, onAdd, on
         setNewId('');
         setNewKeywords('');
     };
+
+    const isAddDisabled = !newId || isSearching || (newId.length > 0 && isSearching);
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -131,7 +154,9 @@ export default function ManageFiltersModal({ isOpen, onClose, filters, onAdd, on
                             {filters.map(filter => (
                                 <div key={filter.id} className="flex justify-between items-center bg-[var(--bg-subtle)] p-3 rounded-lg border border-[var(--border-subtle)]">
                                     <div className="flex flex-col">
-                                        <span className="font-bold text-white">{filter.name || t(`filter_${filter.id}` as any) || filter.id}</span>
+                                        <span className="font-bold text-white truncate max-w-[200px]" title={filter.name}>
+                                            {filter.name || t(`filter_${filter.id}` as any) || filter.id}
+                                        </span>
                                         <span className="text-xs text-[var(--text-muted)] font-mono">{filter.id}</span>
                                     </div>
                                     {filter.id !== 'all' && (
@@ -150,7 +175,8 @@ export default function ManageFiltersModal({ isOpen, onClose, filters, onAdd, on
                     {/* Add New */}
                     <div className="bg-[var(--bg-subtle)]/50 p-4 rounded-xl border border-[var(--border-subtle)] relative">
                         {isSearching && (
-                            <div className="absolute top-2 right-2">
+                            <div className="absolute top-4 right-4 flex items-center gap-2">
+                                <span className="text-xs text-[var(--text-accent)] animate-pulse">Searching...</span>
                                 <span className="animate-spin h-4 w-4 border-2 border-[var(--text-accent)] border-t-transparent rounded-full block"></span>
                             </div>
                         )}
@@ -190,10 +216,17 @@ export default function ManageFiltersModal({ isOpen, onClose, filters, onAdd, on
                             </div>
                             <button
                                 onClick={handleAdd}
-                                disabled={!newId}
-                                className="w-full py-2 bg-[var(--text-accent)] hover:bg-blue-600 text-white rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled={isAddDisabled}
+                                className="w-full py-2 bg-[var(--text-accent)] hover:bg-blue-600 text-white rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2"
                             >
-                                {t('add')}
+                                {isSearching ? (
+                                    <>
+                                        <span className="animate-spin h-3 w-3 border-2 border-white/50 border-t-white rounded-full"></span>
+                                        Processing...
+                                    </>
+                                ) : (
+                                    t('add')
+                                )}
                             </button>
                         </div>
                     </div>
