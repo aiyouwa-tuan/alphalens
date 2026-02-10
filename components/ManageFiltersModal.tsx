@@ -18,7 +18,7 @@ interface ManageFiltersModalProps {
 }
 
 export default function ManageFiltersModal({ isOpen, onClose, filters, onAdd, onDelete }: ManageFiltersModalProps) {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     const [newName, setNewName] = useState('');
     const [newId, setNewId] = useState('');
     const [newKeywords, setNewKeywords] = useState('');
@@ -35,7 +35,9 @@ export default function ManageFiltersModal({ isOpen, onClose, filters, onAdd, on
 
         setIsSearching(true);
         try {
-            const res = await fetch(`/api/market/search?q=${encodeURIComponent(query)}`);
+            // Map simple lang code to Yahoo locale format
+            const locale = language === 'zh' ? 'zh-CN' : 'en-US';
+            const res = await fetch(`/api/market/search?q=${encodeURIComponent(query)}&lang=${locale}`);
             const data = await res.json();
 
             if (data.results && data.results.length > 0) {
