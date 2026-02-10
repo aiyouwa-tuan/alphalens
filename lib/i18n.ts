@@ -79,7 +79,18 @@ export const translations = {
         filter_MSFT: "Microsoft",
         filter_AMZN: "Amazon",
         filter_GOOG: "Google",
-        filter_META: "Meta"
+        filter_META: "Meta",
+
+        // Manage Filters Modal
+        manageFilters: "Manage Feed Filters",
+        addCompany: "Add New Company",
+        companyName: "Company Name (e.g. Tesla)",
+        tickerSymbol: "Ticker/ID (e.g. TSLA)",
+        keywords: "Keywords (comma separated)",
+        add: "Add",
+        delete: "Delete",
+        close: "Close",
+        currentFilters: "Current Filters"
     },
     zh: {
         // Layout
@@ -159,6 +170,17 @@ export const translations = {
         filter_MSFT: "微软 (Microsoft)",
         filter_AMZN: "亚马逊 (Amazon)",
         filter_GOOG: "谷歌 (Google)",
-        filter_META: "Meta"
+        filter_META: "Meta",
+
+        // Manage Filters Modal
+        manageFilters: "管理新闻过滤器",
+        addCompany: "添加新公司",
+        companyName: "公司名称 (如: 特斯拉)",
+        tickerSymbol: "代码/ID (如: TSLA)",
+        keywords: "关键词 (逗号分隔)",
+        add: "添加",
+        delete: "删除",
+        close: "关闭",
+        currentFilters: "当前过滤器"
     }
 };

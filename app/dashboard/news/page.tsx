@@ -3,9 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/components/LanguageProvider';
+import ManageFiltersModal from '@/components/ManageFiltersModal';
 
-// Detailed stock filters mapping to RSS keywords
-const STOCK_FILTERS = [
+// Initial default filters
+const DEFAULT_FILTERS = [
     { id: 'all', keywords: [] },
     { id: 'TSM', keywords: ['TSM', 'TMSC', '台积电', 'Taiwan Semiconductor'] },
     { id: 'AAPL', keywords: ['Apple', 'AAPL', 'iPhone', 'Mac', '苹果', '库克'] },
@@ -19,14 +20,42 @@ const STOCK_FILTERS = [
 
 export default function NewsPage() {
     const { t, language, setLanguage } = useLanguage();
+
+    // State for filters (persisted logic could be added here)
+    const [filters, setFilters] = useState(DEFAULT_FILTERS);
+
+    // Modal State
+    const [isManageModalOpen, setIsManageModalOpen] = useState(false);
+
     const [selectedFilter, setSelectedFilter] = useState('all');
-    const [allNews, setAllNews] = useState<any[]>([]);
     const [filteredNews, setFilteredNews] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
 
+    // Load filters from localStorage on mount
+    useEffect(() => {
+        const saved = localStorage.getItem('news_filters');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    setFilters(parsed);
+                }
+            } catch (e) {
+                console.error("Failed to parse saved filters", e);
+            }
+        }
+    }, []);
+
+    // Save filters to localStorage whenever they change
+    useEffect(() => {
+        if (filters !== DEFAULT_FILTERS) {
+            localStorage.setItem('news_filters', JSON.stringify(filters));
+        }
+    }, [filters]);
+
     // Helper to get translated filter name
-    const getFilterName = (id: string) => {
-        return t(`filter_${id}` as any);
+    const getFilterName = (filter: any) => {
+        return filter.name || t(`filter_${filter.id}` as any) || filter.id;
     };
 
     async function fetchNews(symbolId: string) {
@@ -40,9 +69,7 @@ export default function NewsPage() {
 
             if (data.news) {
                 // Strict Relevance Filter
-                // Finnhub sometimes returns loosely related news (e.g. "Market up" tagged with AAPL).
-                // User wants strictly relevant news.
-                const currentFilter = STOCK_FILTERS.find(f => f.id === symbolId);
+                const currentFilter = filters.find(f => f.id === symbolId);
                 const keywords = currentFilter ? currentFilter.keywords : [];
 
                 if (symbolId !== 'all' && keywords.length > 0) {
@@ -68,10 +95,29 @@ export default function NewsPage() {
     // Effect to fetch when filter or language changes
     useEffect(() => {
         fetchNews(selectedFilter);
-    }, [selectedFilter, language]);
+    }, [selectedFilter, language, filters]); // Re-fetch if filters change (e.g. keywords update)
+
+    const handleAddFilter = (newFilter: any) => {
+        setFilters(prev => [...prev, newFilter]);
+    };
+
+    const handleDeleteFilter = (id: string) => {
+        setFilters(prev => prev.filter(f => f.id !== id));
+        if (selectedFilter === id) {
+            setSelectedFilter('all');
+        }
+    };
 
     return (
         <div className="p-6 max-w-7xl mx-auto min-h-screen">
+            <ManageFiltersModal
+                isOpen={isManageModalOpen}
+                onClose={() => setIsManageModalOpen(false)}
+                filters={filters}
+                onAdd={handleAddFilter}
+                onDelete={handleDeleteFilter}
+            />
+
             {/* Header */}
             <div className="flex justify-between items-center mb-8">
                 <div>
@@ -95,9 +141,17 @@ export default function NewsPage() {
                 {/* Sidebar Filter */}
                 <div className="w-full md:w-64 flex-shrink-0">
                     <div className="bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-xl p-4 sticky top-6">
-                        <h3 className="font-bold text-[var(--text-secondary)] mb-4 text-xs uppercase tracking-wider">{t('marketFocus')}</h3>
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="font-bold text-[var(--text-secondary)] text-xs uppercase tracking-wider">{t('marketFocus')}</h3>
+                            <button
+                                onClick={() => setIsManageModalOpen(true)}
+                                className="text-xs text-[var(--text-accent)] hover:text-white transition-colors font-medium"
+                            >
+                                {t('manage')}
+                            </button>
+                        </div>
                         <div className="space-y-1">
-                            {STOCK_FILTERS.map(item => (
+                            {filters.map(item => (
                                 <button
                                     key={item.id}
                                     onClick={() => setSelectedFilter(item.id)}
@@ -106,7 +160,7 @@ export default function NewsPage() {
                                         : 'text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] hover:text-white'
                                         }`}
                                 >
-                                    {getFilterName(item.id)}
+                                    {getFilterName(item)}
                                 </button>
                             ))}
                         </div>
@@ -125,7 +179,7 @@ export default function NewsPage() {
                         <div className="text-center py-20 text-[var(--text-muted)] bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-xl">
                             {selectedFilter === 'all'
                                 ? t('loadingLatestNews')
-                                : `${t('noRecentNews')} ${getFilterName(selectedFilter)}`}
+                                : `${t('noRecentNews')} ${getFilterName(filters.find(f => f.id === selectedFilter) || { id: selectedFilter })}`}
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 gap-4">
