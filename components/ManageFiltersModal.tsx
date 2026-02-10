@@ -65,10 +65,11 @@ export default function ManageFiltersModal({ isOpen, onClose, filters, onAdd, on
                 // Only auto-fill empty fields or fields not manually edited recently (simplification: just fill if empty)
                 if (type === 'name') {
                     if (!newId) setNewId(bestMatch.symbol);
-                    if (!newKeywords) setNewKeywords(generateKeywords({ ...bestMatch, name: cleanedName }));
+                    if (!newKeywords) setNewKeywords(generateKeywords(bestMatch, cleanedName));
                 } else if (type === 'id') {
+                    // Update name if empty OR if it matches the ID (user typed ID in name field?) - no, just if empty for now
                     if (!newName) setNewName(cleanedName);
-                    if (!newKeywords) setNewKeywords(generateKeywords({ ...bestMatch, name: cleanedName }));
+                    if (!newKeywords) setNewKeywords(generateKeywords(bestMatch, cleanedName));
                 }
             }
         } catch (error) {
@@ -78,11 +79,12 @@ export default function ManageFiltersModal({ isOpen, onClose, filters, onAdd, on
         }
     };
 
-    const generateKeywords = (match: any) => {
+    const generateKeywords = (match: any, cleanedName: string) => {
         const parts = [
-            match.name,
+            cleanedName,
             match.symbol,
-            match.name.split(' ')[0] // First word of company name
+            match.name !== cleanedName ? match.name : null,
+            cleanedName.split(' ')[0] // First word of company name
         ];
         // Remove duplicates and joins
         const unique = [...new Set(parts.filter(Boolean))];
@@ -101,11 +103,13 @@ export default function ManageFiltersModal({ isOpen, onClose, filters, onAdd, on
     };
 
     const handleIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = e.target.value;
+        // FORCE UPPERCASE
+        const val = e.target.value.toUpperCase();
         setNewId(val);
 
         if (searchTimeout.current) clearTimeout(searchTimeout.current);
         searchTimeout.current = setTimeout(() => {
+            // Call search with the uppercase value
             if (val && !newName) performSearch(val, 'id');
         }, 800);
     };
