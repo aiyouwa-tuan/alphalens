@@ -1,4 +1,7 @@
-import yahooFinance from 'yahoo-finance2';
+import YahooFinanceClass from 'yahoo-finance2';
+
+const yahooFinance = new YahooFinanceClass();
+
 
 const FRED_API_KEY = process.env.FRED_API_KEY;
 

@@ -1,6 +1,30 @@
-import yahooFinance from 'yahoo-finance2';
+import YahooFinanceClass from 'yahoo-finance2';
 import * as cheerio from 'cheerio';
 
+const yahooFinance = new YahooFinanceClass();
+
+// ... existing code ...
+
+async function getYahooQuote(symbol: string): Promise<{ price: number; change: number; changePercent: number; marketCap?: number; postMarketPrice?: number; preMarketPrice?: number } | null> {
+    try {
+
+
+        if (yahooFinance && typeof yahooFinance.quote === 'function') {
+            const quote = await yahooFinance.quote(symbol);
+            return {
+                price: quote.regularMarketPrice || quote.price || 0,
+                change: quote.regularMarketChange || 0,
+                changePercent: quote.regularMarketChangePercent || 0,
+                marketCap: quote.marketCap || 0,
+                postMarketPrice: quote.postMarketPrice,
+                preMarketPrice: quote.preMarketPrice
+            };
+        }
+    } catch (error) {
+        console.error(`Yahoo Finance failed for ${symbol}:`, error);
+    }
+    return null;
+}
 const CUSTOM_API_URL = process.env.STOCK_API_URL_TEMPLATE;
 const CUSTOM_API_KEY = process.env.NEXT_PUBLIC_MARKET_API_KEY;
 
@@ -202,38 +226,7 @@ async function getFinnhubQuote(symbol: string): Promise<{ price: number; change:
     }
 }
 
-async function getYahooQuote(symbol: string): Promise<{ price: number; change: number; changePercent: number; marketCap?: number; postMarketPrice?: number; preMarketPrice?: number } | null> {
-    try {
-        const pkg = require('yahoo-finance2');
-        let yf = pkg.default || pkg;
 
-        // Robust instantiation for CJS/ESM
-        if (typeof yf === 'function' || !yf.quote) {
-            if (pkg.YahooFinance) yf = new pkg.YahooFinance();
-            else if (typeof yf === 'function') yf = new yf();
-        }
-
-        // Suppress validation notices to avoid consent blocking
-        if (yf.suppressNotices) {
-            yf.suppressNotices(['yahooSurvey', 'validation']);
-        }
-
-        if (yf && typeof yf.quote === 'function') {
-            const quote = await yf.quote(symbol);
-            return {
-                price: quote.regularMarketPrice || quote.price || 0,
-                change: quote.regularMarketChange || 0,
-                changePercent: quote.regularMarketChangePercent || 0,
-                marketCap: quote.marketCap || 0,
-                postMarketPrice: quote.postMarketPrice,
-                preMarketPrice: quote.preMarketPrice
-            };
-        }
-    } catch (error) {
-        console.error(`Yahoo Finance failed for ${symbol}:`, error);
-    }
-    return null;
-}
 
 export async function getQuote(symbol: string): Promise<{ price: number; change: number; changePercent: number; marketCap?: number; lastUpdated?: number } | null> {
     // Parallel Fetch (Finnhub + Yahoo)
