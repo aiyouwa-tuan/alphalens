@@ -10,11 +10,11 @@ const STOCK_FILTERS = [
     { id: 'TSM', keywords: ['TSM', 'TMSC', '台积电', 'Taiwan Semiconductor'] },
     { id: 'AAPL', keywords: ['Apple', 'AAPL', 'iPhone', 'Mac', '苹果', '库克'] },
     { id: 'TSLA', keywords: ['Tesla', 'TSLA', 'Musk', 'EV', '特斯拉', '马斯克'] },
-    { id: 'NVDA', keywords: ['Nvidia', 'NVDA', 'GPU', 'AI', '英伟达', '黄仁勋'] },
-    { id: 'MSFT', keywords: ['Microsoft', 'MSFT', 'Windows', 'Azure', '微软'] },
-    { id: 'AMZN', keywords: ['Amazon', 'AMZN', 'AWS', '亚马逊'] },
-    { id: 'GOOG', keywords: ['Google', 'GOOG', 'Alphabet', 'Android', '谷歌'] },
-    { id: 'META', keywords: ['Meta', 'Facebook', 'Zuckerberg', 'Instagram', '脸书', '扎克伯格'] },
+    { id: 'NVDA', keywords: ['Nvidia', 'NVDA', 'GPU', 'AI', 'Chip', '英伟达', '黄仁勋', '芯片'] },
+    { id: 'MSFT', keywords: ['Microsoft', 'MSFT', 'Windows', 'Azure', 'Office', 'Copilot', '微软'] },
+    { id: 'AMZN', keywords: ['Amazon', 'AMZN', 'AWS', 'Prime', 'Bezos', 'Jassy', '亚马逊'] },
+    { id: 'GOOG', keywords: ['Google', 'GOOG', 'Alphabet', 'Android', 'Gemini', 'Sundar', '谷歌', '搜索'] },
+    { id: 'META', keywords: ['Meta', 'Facebook', 'Zuckerberg', 'Instagram', 'WhatsApp', 'Reality Labs', '脸书', '扎克伯格'] },
 ];
 
 export default function NewsPage() {
@@ -39,8 +39,21 @@ export default function NewsPage() {
             const data = await res.json();
 
             if (data.news) {
-                // The API already translates and filters
-                setFilteredNews(data.news);
+                // Strict Relevance Filter
+                // Finnhub sometimes returns loosely related news (e.g. "Market up" tagged with AAPL).
+                // User wants strictly relevant news.
+                const currentFilter = STOCK_FILTERS.find(f => f.id === symbolId);
+                const keywords = currentFilter ? currentFilter.keywords : [];
+
+                if (symbolId !== 'all' && keywords.length > 0) {
+                    const strictNews = data.news.filter((item: any) => {
+                        const content = `${item.headline} ${item.summary} ${item.original_headline || ''}`.toLowerCase();
+                        return keywords.some(k => content.includes(k.toLowerCase()));
+                    });
+                    setFilteredNews(strictNews);
+                } else {
+                    setFilteredNews(data.news);
+                }
             } else {
                 setFilteredNews([]);
             }
