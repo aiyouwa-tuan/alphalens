@@ -62,14 +62,15 @@ export default function ManageFiltersModal({ isOpen, onClose, filters, onAdd, on
                 const bestMatch = data.results[0];
                 const cleanedName = cleanCompanyName(bestMatch.name);
 
-                // Only auto-fill empty fields or fields not manually edited recently (simplification: just fill if empty)
+                // Aggressively auto-fill fields based on search type
                 if (type === 'name') {
-                    if (!newId) setNewId(bestMatch.symbol);
-                    if (!newKeywords) setNewKeywords(generateKeywords(bestMatch, cleanedName));
+                    // Update ID if we found a good match for the name
+                    setNewId(bestMatch.symbol);
+                    setNewKeywords(generateKeywords(bestMatch, cleanedName));
                 } else if (type === 'id') {
-                    // Update name if empty OR if it matches the ID (user typed ID in name field?) - no, just if empty for now
-                    if (!newName) setNewName(cleanedName);
-                    if (!newKeywords) setNewKeywords(generateKeywords(bestMatch, cleanedName));
+                    // Update Name if we found a match for the ID
+                    setNewName(cleanedName);
+                    setNewKeywords(generateKeywords(bestMatch, cleanedName));
                 }
             }
         } catch (error) {

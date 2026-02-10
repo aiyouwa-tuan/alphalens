@@ -27,11 +27,22 @@ export async function GET(request: Request) {
             }
         }
 
-        const results = await yahooFinance.search(query!, {
-            quotesCount: 5,
-            newsCount: 0,
-            lang: lang // Pass language to Yahoo Finance
-        }) as any;
+        let results: any = { quotes: [] };
+        try {
+            results = await yahooFinance.search(query!, {
+                quotesCount: 5,
+                newsCount: 0,
+                lang: lang,
+                // @ts-ignore
+                validation: { logErrors: false } // Try to suppress validation logging
+            }) as any;
+        } catch (yahooError: any) {
+            console.error('Yahoo Finance Search Error:', yahooError);
+            // If it's a validation error, we might still have data in yahooError.result? 
+            // Often yahoo-finance2 throws but doesn't return partial data easily. 
+            // We'll return empty results to verify if this is the cause.
+            return NextResponse.json({ results: [] });
+        }
 
         if (!results.quotes) {
             return NextResponse.json({ results: [] });
