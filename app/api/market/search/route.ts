@@ -5,7 +5,7 @@ import translate from 'google-translate-api-x';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
-    const query = searchParams.get('q');
+    let query = searchParams.get('q');
     const lang = searchParams.get('lang') || 'en-US'; // Default to English if not specified
     const isChinese = lang.startsWith('zh');
 
@@ -14,7 +14,20 @@ export async function GET(request: Request) {
     }
 
     try {
-        const results = await yahooFinance.search(query, {
+        // If query contains Chinese characters, translate to English first for better Yahoo search results
+        if (/[\u4e00-\u9fa5]/.test(query)) {
+            try {
+                const translated = await translate(query, { to: 'en' }) as any;
+                if (translated.text) {
+                    console.log(`Translating query: ${query} -> ${translated.text}`);
+                    query = translated.text;
+                }
+            } catch (e) {
+                console.error("Query translation failed:", e);
+            }
+        }
+
+        const results = await yahooFinance.search(query!, {
             quotesCount: 5,
             newsCount: 0,
             lang: lang // Pass language to Yahoo Finance
