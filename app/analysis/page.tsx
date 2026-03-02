@@ -20,6 +20,14 @@ type AgentMessage = {
     final_trade_decision?: string;
 };
 
+export interface AnalysisHistoryItem {
+    id: string;
+    ticker: string;
+    startTime: string;
+    endTime?: string;
+    status: 'running' | 'completed' | 'error';
+}
+
 export default function AnalysisPage() {
     const [ticker, setTicker] = useState("");
     const [provider, setProvider] = useState<"google" | "doubao">("google");
@@ -31,6 +39,27 @@ export default function AnalysisPage() {
     const [finalDecision, setFinalDecision] = useState<string | null>(null); // Changed to state variable
     const [showThoughts, setShowThoughts] = useState(true); // New state variable
     const [isExportingPDF, setIsExportingPDF] = useState(false);
+
+    // History State
+    const [history, setHistory] = useState<AnalysisHistoryItem[]>([]);
+
+    // Load history from localStorage on mount to prevent hydration errors
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem('alphalens_analysis_history');
+            if (saved) {
+                setHistory(JSON.parse(saved));
+            }
+        } catch (e) {
+            console.error("Failed to parse history from localstorage", e);
+        }
+    }, []);
+
+    // Helper to completely sync history to state and localstorage
+    const saveHistory = (newHistory: AnalysisHistoryItem[]) => {
+        setHistory(newHistory);
+        localStorage.setItem('alphalens_analysis_history', JSON.stringify(newHistory.slice(0, 50))); // Keep last 50
+    };
 
     // Ref for auto-scrolling the terminal
     const terminalEndRef = useRef<HTMLDivElement>(null);
@@ -148,6 +177,21 @@ export default function AnalysisPage() {
                 // Non-blocking: If search fails, we continue with the raw input
             }
 
+            // Create new history record
+            const newHistoryId = Date.now().toString();
+            const nowTime = new Date().toLocaleString('zh-CN', { hour12: false });
+
+            setHistory(prev => {
+                const updated = [{
+                    id: newHistoryId,
+                    ticker: resolvedTicker,
+                    startTime: nowTime,
+                    status: 'running' as const
+                }, ...prev].slice(0, 50);
+                localStorage.setItem('alphalens_analysis_history', JSON.stringify(updated));
+                return updated;
+            });
+
             const payload = {
                 ticker: resolvedTicker,
                 provider,
@@ -196,6 +240,17 @@ export default function AnalysisPage() {
                             if (data.type === "done" || data.type === "error") {
                                 setIsAnalyzing(false);
                                 setActiveNode(null);
+
+                                // Mark history as completed
+                                setHistory(prev => {
+                                    const updated = prev.map(item =>
+                                        item.id === newHistoryId
+                                            ? { ...item, status: (data.type === 'error' ? 'error' : 'completed') as 'error' | 'completed', endTime: new Date().toLocaleString('zh-CN', { hour12: false }) }
+                                            : item
+                                    );
+                                    localStorage.setItem('alphalens_analysis_history', JSON.stringify(updated));
+                                    return updated;
+                                });
                             }
                         } catch (err) {
                             console.error("Failed to parse SSE chunk:", trimmedBlock, err);
@@ -207,6 +262,17 @@ export default function AnalysisPage() {
                             setMessages(prev => [...prev, { type: "error", message: errData.error }]);
                             setIsAnalyzing(false);
                             setActiveNode(null);
+
+                            // Mark history as error
+                            setHistory(prev => {
+                                const updated = prev.map(item =>
+                                    item.id === newHistoryId
+                                        ? { ...item, status: 'error' as const, endTime: new Date().toLocaleString('zh-CN', { hour12: false }) }
+                                        : item
+                                );
+                                localStorage.setItem('alphalens_analysis_history', JSON.stringify(updated));
+                                return updated;
+                            });
                         } catch (e) {
                             // ignore partial JSON
                         }
@@ -216,6 +282,9 @@ export default function AnalysisPage() {
         } catch (error) {
             console.error("Stream error:", error);
             setIsAnalyzing(false);
+
+            // Note: Since newHistoryId is scoped within the main try block, we can't easily catch outer errors here without refactoring.
+            // The outer try block mostly catches connection errors before the stream starts. We could lift newHistoryId to function scope if needed.
         }
     };
 
@@ -257,271 +326,332 @@ export default function AnalysisPage() {
                         Input a stock ticker to unleash our autonomous team of AI analysts. They will debate market sentiment, technicals, and fundamentals to provide an objective trading signal.
                     </p>
 
-                    <form onSubmit={handleAnalyze} className="mt-10 max-w-xl mx-auto flex flex-col gap-4">
-                        <div className="relative group">
-                            <div className="absolute inset-0 bg-blue-500/20 rounded-xl blur-lg transition-opacity opacity-0 group-hover:opacity-100" />
-                            <div className="relative flex items-center bg-[#111113] border border-white/10 rounded-xl overflow-hidden shadow-2xl">
-                                <input
-                                    type="text"
-                                    placeholder="Enter Ticker (e.g. AAPL, NVDA)"
-                                    className="w-full bg-transparent border-none text-white px-6 py-5 text-lg outline-none placeholder:text-slate-500 uppercase"
-                                    value={ticker}
-                                    onChange={(e) => setTicker(e.target.value)}
-                                    disabled={isAnalyzing}
-                                />
-                                <button
-                                    type="submit"
-                                    disabled={isAnalyzing || !ticker}
-                                    className="mr-3 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
-                                >
-                                    {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <PlayCircle className="w-5 h-5" />}
-                                    Analyze
-                                </button>
-                            </div>
-                        </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16 mt-10 max-w-5xl mx-auto">
+                        {/* Left Column: Input Form and Config */}
+                        <div className="lg:col-span-2 flex flex-col gap-6">
 
-                        {/* LLM Settings Panel */}
-                        <div className="bg-[#111113] border border-white/10 rounded-xl p-5 text-left text-sm flex flex-col gap-4 shadow-xl">
-                            <div className="flex items-center justify-between">
-                                <span className="font-semibold text-slate-300">Model Configuration</span>
-                            </div>
+                            {/* Input Area */}
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <label className="text-slate-500 text-xs uppercase tracking-wider">Provider</label>
-                                    <select
-                                        value={provider}
-                                        onChange={(e) => setProvider(e.target.value as "google" | "doubao")}
-                                        disabled={isAnalyzing}
-                                        className="w-full bg-[#1A1A1D] border border-white/5 rounded-lg px-3 py-2 text-white outline-none focus:border-blue-500/50"
-                                    >
-                                        <option value="google">Google Gemini</option>
-                                        <option value="doubao">Volcengine Doubao</option>
-                                    </select>
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-slate-500 text-xs uppercase tracking-wider">Model / Endpoint ID</label>
+                            <form onSubmit={handleAnalyze} className="relative group">
+                                <div className="absolute inset-0 bg-blue-500/20 rounded-xl blur-lg transition-opacity opacity-0 group-hover:opacity-100" />
+                                <div className="relative flex items-center bg-[#111113] border border-white/10 rounded-xl overflow-hidden shadow-2xl">
                                     <input
                                         type="text"
-                                        value={model}
-                                        onChange={(e) => setModel(e.target.value)}
+                                        placeholder="Enter Ticker (e.g. AAPL, NVDA, 腾讯)"
+                                        className="w-full bg-transparent border-none text-white px-6 py-5 text-lg outline-none placeholder:text-slate-500 uppercase font-mono"
+                                        value={ticker}
+                                        onChange={(e) => setTicker(e.target.value)}
                                         disabled={isAnalyzing}
-                                        className="w-full bg-[#1A1A1D] border border-white/5 rounded-lg px-3 py-2 text-white outline-none focus:border-blue-500/50"
+                                    />
+                                    <button
+                                        type="submit"
+                                        disabled={isAnalyzing || !ticker}
+                                        className="mr-3 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+                                    >
+                                        {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <PlayCircle className="w-5 h-5" />}
+                                        Analyze
+                                    </button>
+                                </div>
+                            </form>
+
+                            {/* LLM Settings Panel */}
+                            <div className="bg-[#111113] border border-white/10 rounded-xl p-5 text-left text-sm flex flex-col gap-4 shadow-xl">
+                                <div className="flex items-center justify-between">
+                                    <span className="font-semibold text-slate-300">Model Configuration</span>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                        <label className="text-slate-500 text-xs uppercase tracking-wider">Provider</label>
+                                        <select
+                                            value={provider}
+                                            onChange={(e) => setProvider(e.target.value as "google" | "doubao")}
+                                            disabled={isAnalyzing}
+                                            className="w-full bg-[#1A1A1D] border border-white/5 rounded-lg px-3 py-2 text-white outline-none focus:border-blue-500/50"
+                                        >
+                                            <option value="google">Google Gemini</option>
+                                            <option value="doubao">Volcengine Doubao</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-slate-500 text-xs uppercase tracking-wider">Model / Endpoint ID</label>
+                                        <input
+                                            type="text"
+                                            value={model}
+                                            onChange={(e) => setModel(e.target.value)}
+                                            disabled={isAnalyzing}
+                                            className="w-full bg-[#1A1A1D] border border-white/5 rounded-lg px-3 py-2 text-white outline-none focus:border-blue-500/50 font-mono"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1">
+                                    <label className="text-slate-500 text-xs uppercase tracking-wider">API Key (Optional, overrides .env)</label>
+                                    <input
+                                        type="password"
+                                        value={apiKey}
+                                        onChange={(e) => setApiKey(e.target.value)}
+                                        disabled={isAnalyzing}
+                                        placeholder={provider === "google" ? "AIzaSy..." : "Your Doubao API Key"}
+                                        className="w-full bg-[#1A1A1D] border border-white/5 rounded-lg px-3 py-2 text-white outline-none focus:border-blue-500/50 font-mono"
                                     />
                                 </div>
                             </div>
 
-                            <div className="space-y-1">
-                                <label className="text-slate-500 text-xs uppercase tracking-wider">API Key (Optional, overrides .env)</label>
-                                <input
-                                    type="password"
-                                    value={apiKey}
-                                    onChange={(e) => setApiKey(e.target.value)}
-                                    disabled={isAnalyzing}
-                                    placeholder={provider === "google" ? "AIzaSy..." : "Your Doubao API Key"}
-                                    className="w-full bg-[#1A1A1D] border border-white/5 rounded-lg px-3 py-2 text-white outline-none focus:border-blue-500/50"
-                                />
-                            </div>
-                        </div>
-                    </form>
-                </div>
-
-                {/* Content Area */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-                    {/* Agent Stream Terminal */}
-                    <div className="lg:col-span-1 rounded-2xl bg-[#111113] border border-white/10 flex flex-col h-[600px] overflow-hidden shadow-xl">
-                        <div className="flex items-center gap-3 px-5 py-4 border-b border-white/5 bg-[#1A1A1D]">
-                            <div className="w-3 h-3 rounded-full bg-red-500" />
-                            <div className="w-3 h-3 rounded-full bg-yellow-500" />
-                            <div className="w-3 h-3 rounded-full bg-green-500" />
-                            <span className="ml-2 text-sm text-slate-400 font-mono">agent-terminal ~ zsh</span>
                         </div>
 
-                        <div className="flex-1 p-5 overflow-y-auto font-mono text-sm space-y-4 scrollbar-thin scrollbar-thumb-white/10">
-                            <AnimatePresence>
-                                {messages.length === 0 && !isAnalyzing && (
-                                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-slate-500 italic">
-                                        Waiting for input...
-                                    </motion.div>
-                                )}
-                                {messages.map((msg, idx) => (
-                                    <motion.div
-                                        key={idx}
-                                        initial={{ opacity: 0, x: -10 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        className="flex flex-col gap-1"
+                        {/* Right Column: History Panel */}
+                        <div className="bg-[#111113] border border-white/10 rounded-2xl flex flex-col h-[280px]">
+                            <div className="p-4 border-b border-white/10 flex items-center justify-between shrink-0">
+                                <h3 className="text-sm font-semibold text-slate-300 px-1">Recent Analyses</h3>
+                                {history.length > 0 && (
+                                    <button
+                                        onClick={() => {
+                                            localStorage.removeItem('alphalens_analysis_history');
+                                            setHistory([]);
+                                        }}
+                                        className="text-xs text-slate-500 hover:text-red-400 transition-colors"
                                     >
-                                        {msg.type === "status" && <span className="text-blue-400">➜ {msg.message}</span>}
-                                        {msg.type === "done" && <span className="text-green-400">➜ {msg.message}</span>}
-                                        {msg.type === "error" && <span className="text-red-400">➜ Error: {msg.message}</span>}
-
-                                        {msg.type === "update" && (
-                                            <div className="pl-4 border-l-2 border-white/5 py-1">
-                                                <span className="text-indigo-400 font-bold">[{msg.node}]</span>
-                                                {msg.tool_calls && msg.tool_calls.length > 0 ? (
-                                                    <div className="text-slate-400 mt-1">
-                                                        Calling tool: <span className="text-yellow-400/80">{msg.tool_calls[0].name}</span>()
-                                                    </div>
-                                                ) : msg.content ? (
-                                                    <div className="text-slate-300 mt-1 whitespace-pre-wrap">
-                                                        {msg.content.substring(0, 150)}{msg.content.length > 150 ? "..." : ""}
-                                                    </div>
-                                                ) : (
-                                                    <div className="text-slate-500 mt-1 italic">
-                                                        (Processing...)
+                                        Clear History
+                                    </button>
+                                )}
+                            </div>
+                            <div className="p-4 overflow-y-auto space-y-3 flex-1 custom-scrollbar">
+                                {history.length === 0 ? (
+                                    <div className="h-full flex flex-col items-center justify-center text-slate-500 text-sm py-8">
+                                        <div className="w-10 h-10 rounded-full border border-dashed border-white/10 mb-2 flex items-center justify-center">
+                                            <Activity className="w-4 h-4 opacity-50" />
+                                        </div>
+                                        No past analyses yet.
+                                    </div>
+                                ) : (
+                                    history.map((item) => (
+                                        <div key={item.id} className="bg-white/5 border border-white/5 rounded-xl p-3 hover:border-white/10 transition-colors cursor-pointer" onClick={() => {
+                                            if (!isAnalyzing) setTicker(item.ticker);
+                                        }}>
+                                            <div className="flex justify-between items-start mb-2">
+                                                <span className="font-mono font-bold text-blue-400 text-base">{item.ticker}</span>
+                                                {item.status === 'running' && <span className="flex items-center gap-1 text-[10px] uppercase font-bold text-yellow-500 bg-yellow-500/10 px-2 py-0.5 rounded-full"><Loader2 className="w-3 h-3 animate-spin" /> Running</span>}
+                                                {item.status === 'completed' && <span className="text-[10px] uppercase font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">Completed</span>}
+                                                {item.status === 'error' && <span className="text-[10px] uppercase font-bold text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full">Error</span>}
+                                            </div>
+                                            <div className="text-[11px] text-slate-500 flex flex-col gap-1 font-mono">
+                                                <div className="flex justify-between">
+                                                    <span>Start:</span>
+                                                    <span className="text-slate-400">{item.startTime}</span>
+                                                </div>
+                                                {item.endTime && (
+                                                    <div className="flex justify-between">
+                                                        <span>End:</span>
+                                                        <span className="text-slate-400">{item.endTime}</span>
                                                     </div>
                                                 )}
                                             </div>
-                                        )}
-                                    </motion.div>
-                                ))}
-                            </AnimatePresence>
-                            {isAnalyzing && (
-                                <div className="flex items-center gap-2 text-blue-400 opacity-70">
-                                    <span className="animate-pulse">_</span>
-                                </div>
-                            )}
-                            <div ref={terminalEndRef} />
+                                        </div>
+                                    ))
+                                )}
+                            </div>
                         </div>
+
                     </div>
 
-                    {/* Results Grid */}
-                    <div className="lg:col-span-2 flex flex-col gap-6">
+                    {/* Content Area */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-                        {/* Status Overview Card */}
-                        <div className="rounded-2xl bg-gradient-to-br from-[#111113] to-[#151518] border border-white/10 p-8 shadow-xl relative overflow-hidden">
-                            <div className="absolute inset-0 bg-blue-500/5" />
-                            <div className="relative flex justify-between items-start">
-                                <div>
-                                    <h3 className="text-xl font-semibold text-white flex items-center gap-2">
-                                        <Activity className="w-6 h-6 text-blue-400" />
-                                        Live Execution Status
-                                    </h3>
-                                    <p className="text-slate-400 mt-2 text-sm">
-                                        Watch the agents debate and form an investment plan.
-                                    </p>
-                                </div>
-
-                                <div className={`px - 4 py - 2 rounded - full text - sm font - semibold border ${isAnalyzing ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'bg-green-500/10 text-green-500 border-green-500/20'} `}>
-                                    {isAnalyzing ? "Analysis in Progress..." : "Ready"}
-                                </div>
+                        {/* Agent Stream Terminal */}
+                        <div className="lg:col-span-1 rounded-2xl bg-[#111113] border border-white/10 flex flex-col h-[600px] overflow-hidden shadow-xl">
+                            <div className="flex items-center gap-3 px-5 py-4 border-b border-white/5 bg-[#1A1A1D]">
+                                <div className="w-3 h-3 rounded-full bg-red-500" />
+                                <div className="w-3 h-3 rounded-full bg-yellow-500" />
+                                <div className="w-3 h-3 rounded-full bg-green-500" />
+                                <span className="ml-2 text-sm text-slate-400 font-mono">agent-terminal ~ zsh</span>
                             </div>
 
-                            {/* Active Agent Pulse */}
-                            {activeNode && isAnalyzing && (
-                                <div className="mt-8 flex items-center gap-4 p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
-                                    <div className="relative">
-                                        <div className="absolute inset-0 bg-indigo-500/30 rounded-full animate-ping" />
-                                        <Cpu className="w-8 h-8 text-indigo-400 relative z-10" />
+                            <div className="flex-1 p-5 overflow-y-auto font-mono text-sm space-y-4 scrollbar-thin scrollbar-thumb-white/10">
+                                <AnimatePresence>
+                                    {messages.length === 0 && !isAnalyzing && (
+                                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-slate-500 italic">
+                                            Waiting for input...
+                                        </motion.div>
+                                    )}
+                                    {messages.map((msg, idx) => (
+                                        <motion.div
+                                            key={idx}
+                                            initial={{ opacity: 0, x: -10 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            className="flex flex-col gap-1"
+                                        >
+                                            {msg.type === "status" && <span className="text-blue-400">➜ {msg.message}</span>}
+                                            {msg.type === "done" && <span className="text-green-400">➜ {msg.message}</span>}
+                                            {msg.type === "error" && <span className="text-red-400">➜ Error: {msg.message}</span>}
+
+                                            {msg.type === "update" && (
+                                                <div className="pl-4 border-l-2 border-white/5 py-1">
+                                                    <span className="text-indigo-400 font-bold">[{msg.node}]</span>
+                                                    {msg.tool_calls && msg.tool_calls.length > 0 ? (
+                                                        <div className="text-slate-400 mt-1">
+                                                            Calling tool: <span className="text-yellow-400/80">{msg.tool_calls[0].name}</span>()
+                                                        </div>
+                                                    ) : msg.content ? (
+                                                        <div className="text-slate-300 mt-1 whitespace-pre-wrap">
+                                                            {msg.content.substring(0, 150)}{msg.content.length > 150 ? "..." : ""}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-slate-500 mt-1 italic">
+                                                            (Processing...)
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </motion.div>
+                                    ))}
+                                </AnimatePresence>
+                                {isAnalyzing && (
+                                    <div className="flex items-center gap-2 text-blue-400 opacity-70">
+                                        <span className="animate-pulse">_</span>
                                     </div>
+                                )}
+                                <div ref={terminalEndRef} />
+                            </div>
+                        </div>
+
+                        {/* Results Grid */}
+                        <div className="lg:col-span-2 flex flex-col gap-6">
+
+                            {/* Status Overview Card */}
+                            <div className="rounded-2xl bg-gradient-to-br from-[#111113] to-[#151518] border border-white/10 p-8 shadow-xl relative overflow-hidden">
+                                <div className="absolute inset-0 bg-blue-500/5" />
+                                <div className="relative flex justify-between items-start">
                                     <div>
-                                        <div className="text-sm font-medium text-indigo-400 uppercase tracking-wider">Active Agent</div>
-                                        <div className="text-lg text-white font-semibold">{activeNode}</div>
+                                        <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+                                            <Activity className="w-6 h-6 text-blue-400" />
+                                            Live Execution Status
+                                        </h3>
+                                        <p className="text-slate-400 mt-2 text-sm">
+                                            Watch the agents debate and form an investment plan.
+                                        </p>
+                                    </div>
+
+                                    <div className={`px - 4 py - 2 rounded - full text - sm font - semibold border ${isAnalyzing ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'bg-green-500/10 text-green-500 border-green-500/20'} `}>
+                                        {isAnalyzing ? "Analysis in Progress..." : "Ready"}
                                     </div>
                                 </div>
+
+                                {/* Active Agent Pulse */}
+                                {activeNode && isAnalyzing && (
+                                    <div className="mt-8 flex items-center gap-4 p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
+                                        <div className="relative">
+                                            <div className="absolute inset-0 bg-indigo-500/30 rounded-full animate-ping" />
+                                            <Cpu className="w-8 h-8 text-indigo-400 relative z-10" />
+                                        </div>
+                                        <div>
+                                            <div className="text-sm font-medium text-indigo-400 uppercase tracking-wider">Active Agent</div>
+                                            <div className="text-lg text-white font-semibold">{activeNode}</div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Live Agent Thoughts (Collapsible) */}
+                                {messages.length > 0 && (
+                                    <div className="mt-8 border border-white/10 rounded-xl overflow-hidden bg-[#1A1A1D]">
+                                        <button
+                                            onClick={() => setShowThoughts(!showThoughts)}
+                                            className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors focus:outline-none"
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <BrainCircuit className="w-5 h-5 text-purple-400" />
+                                                <span className="font-semibold text-slate-200">Live Agent Thoughts</span>
+                                                {isAnalyzing && (
+                                                    <span className="flex h-2 w-2 relative ml-2">
+                                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {showThoughts ? <ChevronUp className="w-5 h-5 text-slate-500" /> : <ChevronDown className="w-5 h-5 text-slate-500" />}
+                                        </button>
+
+                                        <AnimatePresence>
+                                            {showThoughts && (
+                                                <motion.div
+                                                    initial={{ height: 0, opacity: 0 }}
+                                                    animate={{ height: "auto", opacity: 1 }}
+                                                    exit={{ height: 0, opacity: 0 }}
+                                                    className="border-t border-white/5"
+                                                >
+                                                    <div className="p-4 max-h-[400px] overflow-y-auto space-y-4 font-mono text-sm scrollbar-thin scrollbar-thumb-white/10">
+                                                        {messages.filter(m => m.type === "update").map((msg, idx) => (
+                                                            <div key={idx} className="bg-[#111113] p-3 rounded-lg border border-white/5">
+                                                                <div className="flex items-center gap-2 mb-2">
+                                                                    <span className="bg-indigo-500/20 text-indigo-300 text-xs px-2 py-0.5 rounded">
+                                                                        {msg.node}
+                                                                    </span>
+                                                                </div>
+                                                                {msg.tool_calls && msg.tool_calls.length > 0 ? (
+                                                                    <div className="text-yellow-400/90 text-xs">
+                                                                        &gt; Executing tool: <span className="font-semibold">{msg.tool_calls[0].name}</span>(...)
+                                                                    </div>
+                                                                ) : msg.content ? (
+                                                                    <div className="text-slate-300 whitespace-pre-wrap leading-relaxed opacity-90">
+                                                                        {msg.content}
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="text-slate-500 italic">
+                                                                        (Processing...)
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                        {messages.filter(m => m.type === "update").length === 0 && (
+                                                            <div className="text-slate-500 italic text-center py-4">Waiting for agent to produce analytical thoughts...</div>
+                                                        )}
+                                                        <div ref={thoughtsEndRef} />
+                                                    </div >
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Final Decision Area */}
+                            {finalDecision && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                                    className="lg:col-span-2 flex-1 rounded-2xl bg-[#111113] border border-blue-500/20 p-8 shadow-xl shadow-blue-900/10 flex flex-col"
+                                >
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h3 className="text-2xl text-white font-bold flex items-center gap-3">
+                                            <ShieldAlert className="w-7 h-7 text-blue-500" />
+                                            Final Trading Plan
+                                        </h3>
+                                        <button
+                                            onClick={handleDownloadPDF}
+                                            disabled={isExportingPDF}
+                                            className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-colors text-sm font-medium border border-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {isExportingPDF ? (
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                            ) : (
+                                                <Download className="w-4 h-4" />
+                                            )}
+                                            {isExportingPDF ? "Exporting..." : "Download PDF"}
+                                        </button>
+                                    </div>
+                                    <div ref={pdfContentRef} className="prose prose-invert prose-blue max-w-none text-slate-300">
+                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                            {finalDecision}
+                                        </ReactMarkdown>
+                                    </div>
+                                </motion.div>
                             )}
 
-                            {/* Live Agent Thoughts (Collapsible) */}
-                            {messages.length > 0 && (
-                                <div className="mt-8 border border-white/10 rounded-xl overflow-hidden bg-[#1A1A1D]">
-                                    <button
-                                        onClick={() => setShowThoughts(!showThoughts)}
-                                        className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors focus:outline-none"
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <BrainCircuit className="w-5 h-5 text-purple-400" />
-                                            <span className="font-semibold text-slate-200">Live Agent Thoughts</span>
-                                            {isAnalyzing && (
-                                                <span className="flex h-2 w-2 relative ml-2">
-                                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
-                                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
-                                                </span>
-                                            )}
-                                        </div>
-                                        {showThoughts ? <ChevronUp className="w-5 h-5 text-slate-500" /> : <ChevronDown className="w-5 h-5 text-slate-500" />}
-                                    </button>
-
-                                    <AnimatePresence>
-                                        {showThoughts && (
-                                            <motion.div
-                                                initial={{ height: 0, opacity: 0 }}
-                                                animate={{ height: "auto", opacity: 1 }}
-                                                exit={{ height: 0, opacity: 0 }}
-                                                className="border-t border-white/5"
-                                            >
-                                                <div className="p-4 max-h-[400px] overflow-y-auto space-y-4 font-mono text-sm scrollbar-thin scrollbar-thumb-white/10">
-                                                    {messages.filter(m => m.type === "update").map((msg, idx) => (
-                                                        <div key={idx} className="bg-[#111113] p-3 rounded-lg border border-white/5">
-                                                            <div className="flex items-center gap-2 mb-2">
-                                                                <span className="bg-indigo-500/20 text-indigo-300 text-xs px-2 py-0.5 rounded">
-                                                                    {msg.node}
-                                                                </span>
-                                                            </div>
-                                                            {msg.tool_calls && msg.tool_calls.length > 0 ? (
-                                                                <div className="text-yellow-400/90 text-xs">
-                                                                    &gt; Executing tool: <span className="font-semibold">{msg.tool_calls[0].name}</span>(...)
-                                                                </div>
-                                                            ) : msg.content ? (
-                                                                <div className="text-slate-300 whitespace-pre-wrap leading-relaxed opacity-90">
-                                                                    {msg.content}
-                                                                </div>
-                                                            ) : (
-                                                                <div className="text-slate-500 italic">
-                                                                    (Processing...)
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    ))}
-                                                    {messages.filter(m => m.type === "update").length === 0 && (
-                                                        <div className="text-slate-500 italic text-center py-4">Waiting for agent to produce analytical thoughts...</div>
-                                                    )}
-                                                    <div ref={thoughtsEndRef} />
-                                                </div >
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
+                            {!finalDecision && !isAnalyzing && messages.length > 0 && (
+                                <div className="flex-1 rounded-2xl border border-dashed border-white/20 flex items-center justify-center text-slate-500 min-h-[300px]">
+                                    Analysis result will appear here.
                                 </div>
                             )}
                         </div>
-
-                        {/* Final Decision Area */}
-                        {finalDecision && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                                className="lg:col-span-2 flex-1 rounded-2xl bg-[#111113] border border-blue-500/20 p-8 shadow-xl shadow-blue-900/10 flex flex-col"
-                            >
-                                <div className="flex items-center justify-between mb-6">
-                                    <h3 className="text-2xl text-white font-bold flex items-center gap-3">
-                                        <ShieldAlert className="w-7 h-7 text-blue-500" />
-                                        Final Trading Plan
-                                    </h3>
-                                    <button
-                                        onClick={handleDownloadPDF}
-                                        disabled={isExportingPDF}
-                                        className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-colors text-sm font-medium border border-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        {isExportingPDF ? (
-                                            <Loader2 className="w-4 h-4 animate-spin" />
-                                        ) : (
-                                            <Download className="w-4 h-4" />
-                                        )}
-                                        {isExportingPDF ? "Exporting..." : "Download PDF"}
-                                    </button>
-                                </div>
-                                <div ref={pdfContentRef} className="prose prose-invert prose-blue max-w-none text-slate-300">
-                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                        {finalDecision}
-                                    </ReactMarkdown>
-                                </div>
-                            </motion.div>
-                        )}
-
-                        {!finalDecision && !isAnalyzing && messages.length > 0 && (
-                            <div className="flex-1 rounded-2xl border border-dashed border-white/20 flex items-center justify-center text-slate-500 min-h-[300px]">
-                                Analysis result will appear here.
-                            </div>
-                        )}
                     </div>
                 </div>
             </div>
