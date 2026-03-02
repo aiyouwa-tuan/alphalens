@@ -77,29 +77,30 @@ async def start_debate(request: Request, body: DebateRequest):
         elif body.provider == "doubao":
             os.environ["DOUBAO_API_KEY"] = body.api_key
 
-    try:
-        # Initialize graph
-        ta = TradingAgentsGraph(debug=True, config=config)
-        
-        # We need to stream the graph execution instead of calling `propagate`.
-        # Taking logic from `tradingagents.graph.trading_graph.py` -> propagate() debug mode:
-        init_agent_state = ta.propagator.create_initial_state(ticker, current_date)
-        args = ta.propagator.get_graph_args()
-
-    except Exception as e:
-        return {"error": f"Failed to initialize graph: {str(e)}"}
-
     async def sse_generator():
         try:
+            yield format_sse({"type": "status", "message": f"Initializing AI Agents to analyze {ticker}..."})
+            await asyncio.sleep(0) # Flush headers
+            
+            # 1. Initialize Graph synchronously in a background thread to prevent blocking FastAPI
+            try:
+                def _init_graph():
+                    graph = TradingAgentsGraph(debug=True, config=config)
+                    initial_state = graph.propagator.create_initial_state(ticker, current_date)
+                    g_args = graph.propagator.get_graph_args()
+                    return graph, initial_state, g_args
+                    
+                ta, init_agent_state, args = await asyncio.to_thread(_init_graph)
+            except Exception as e:
+                yield format_sse({"type": "error", "message": f"Failed to initialize graph: {str(e)}"})
+                return
+
             yield format_sse({"type": "status", "message": f"Starting analysis for {ticker}..."})
             
             # Use asyncio to run the synchronous stream generator without blocking the event loop
-            # But the langgraph `graph.stream` is a synchronous generator. 
-            # We iterate over it in a thread pool using asyncio.to_thread
             def run_stream():
-                args = ta.propagator.get_graph_args()
                 args["stream_mode"] = "updates"
-                for chunk in ta.graph.stream(ta.propagator.create_initial_state(ticker, current_date), **args):
+                for chunk in ta.graph.stream(init_agent_state, **args):
                     yield chunk
 
             # We'll adapt it by extracting data safely 
