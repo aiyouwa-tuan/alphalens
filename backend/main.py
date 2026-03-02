@@ -21,14 +21,23 @@ from tradingagents.default_config import DEFAULT_CONFIG
 
 app = FastAPI(title="TradingAgents API")
 
-# Allow all origins for CORS
+# Adjust CORS for Render & Next.js compatibility
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",
+        "https://www.neurynx.com",
+        "https://alpha-lens-pi.vercel.app"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/")
+def health_check():
+    """Root endpoint for Render health checks"""
+    return {"status": "ok", "message": "AlphaLens API is running natively."}
 
 class DebateRequest(BaseModel):
     ticker: str
