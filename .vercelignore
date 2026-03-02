@@ -1,0 +1,11 @@
+# Ignore the Python backend directory because Vercel has a strict 250MB size limit
+# and the Python virtual environment (.venv) is over 1.5GB.
+# The backend is hosted separately on Render.
+backend/
+test_scraper.js
+inspect_*.js
+test-*.js
+test_graph.py
+test_server/
+backend.zip
+data/

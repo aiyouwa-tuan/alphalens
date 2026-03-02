@@ -46,3 +46,7 @@ backend.zip
 frontend_test.png
 test_server/
 test_graph*
+
+# Backend
+backend/.venv
+backend/tradingagents/data_cache/
