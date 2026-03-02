@@ -27,6 +27,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "https://www.neurynx.com",
+        "https://neurynx.com",
         "https://alpha-lens-pi.vercel.app"
     ],
     allow_credentials=True,

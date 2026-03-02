@@ -159,6 +159,8 @@ export default function AnalysisPage() {
         setFinalDecision(null); // Reset final decision
         setShowThoughts(true); // Show thoughts by default
 
+        const newHistoryId = Date.now().toString();
+
         try {
             let resolvedTicker = ticker.toUpperCase();
 
@@ -178,7 +180,6 @@ export default function AnalysisPage() {
             }
 
             // Create new history record
-            const newHistoryId = Date.now().toString();
             const nowTime = new Date().toLocaleString('zh-CN', { hour12: false });
 
             setHistory(prev => {
@@ -283,8 +284,16 @@ export default function AnalysisPage() {
             console.error("Stream error:", error);
             setIsAnalyzing(false);
 
-            // Note: Since newHistoryId is scoped within the main try block, we can't easily catch outer errors here without refactoring.
-            // The outer try block mostly catches connection errors before the stream starts. We could lift newHistoryId to function scope if needed.
+            // Mark history as error since a network/CORS error occurred
+            setHistory(prev => {
+                const updated = prev.map(item =>
+                    item.id === newHistoryId
+                        ? { ...item, status: 'error' as const, endTime: new Date().toLocaleString('zh-CN', { hour12: false }) }
+                        : item
+                );
+                localStorage.setItem('alphalens_analysis_history', JSON.stringify(updated));
+                return updated;
+            });
         }
     };
 
