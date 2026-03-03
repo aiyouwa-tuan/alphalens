@@ -280,9 +280,12 @@ export default function AnalysisPage() {
 
     const handleStop = () => {
         if (abortControllerRef.current) {
+            console.log("Aborting current fetch request...");
             abortControllerRef.current.abort();
             abortControllerRef.current = null;
         }
+        // Force the UI elements to stop resolving regardless of backend disconnect success
+        setIsAnalyzing(false);
     };
     const handleAnalyze = async (e: React.FormEvent) => {
         e.preventDefault();
