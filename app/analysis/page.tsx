@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Building2, Activity, ShieldAlert, Cpu, BrainCircuit, ArrowRight, Loader2, PlayCircle, ChevronDown, ChevronUp, Download } from "lucide-react";
+import { Building2, Activity, ShieldAlert, Cpu, BrainCircuit, ArrowRight, Loader2, PlayCircle, ChevronDown, ChevronUp, Download, XCircle } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -39,6 +39,7 @@ export default function AnalysisPage() {
     const [finalDecision, setFinalDecision] = useState<string | null>(null); // Changed to state variable
     const [showThoughts, setShowThoughts] = useState(true); // New state variable
     const [isExportingPDF, setIsExportingPDF] = useState(false);
+    const abortControllerRef = useRef<AbortController | null>(null);
 
     // History State
     const [history, setHistory] = useState<AnalysisHistoryItem[]>([]);
@@ -143,6 +144,13 @@ export default function AnalysisPage() {
         }
     };
 
+    const handleStop = () => {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+            abortControllerRef.current = null;
+        }
+    };
+
     // Auto-update model when provider changes if none is typed
     useEffect(() => {
         if (provider === "google") setModel("gemini-3-pro-preview");
@@ -158,6 +166,9 @@ export default function AnalysisPage() {
         setActiveNode(null);
         setFinalDecision(null); // Reset final decision
         setShowThoughts(true); // Show thoughts by default
+
+        abortControllerRef.current = new AbortController();
+        const { signal } = abortControllerRef.current;
 
         const newHistoryId = Date.now().toString();
 
@@ -204,7 +215,8 @@ export default function AnalysisPage() {
             const response = await fetch(`${backendUrl}/api/debate`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
+                body: JSON.stringify(payload),
+                signal // Attach the abort signal
             });
 
             if (!response.body) throw new Error("No response body");
@@ -280,20 +292,40 @@ export default function AnalysisPage() {
                     }
                 }
             }
-        } catch (error) {
-            console.error("Stream error:", error);
-            setIsAnalyzing(false);
+        } catch (error: any) {
+            if (error.name === "AbortError") {
+                console.log("Analysis stream aborted by user.");
+                setMessages(prev => [...prev, { type: "error", message: "Analysis canceled by user." }]);
+                setIsAnalyzing(false);
+                setActiveNode(null);
 
-            // Mark history as error since a network/CORS error occurred
-            setHistory(prev => {
-                const updated = prev.map(item =>
-                    item.id === newHistoryId
-                        ? { ...item, status: 'error' as const, endTime: new Date().toLocaleString('zh-CN', { hour12: false }) }
-                        : item
-                );
-                localStorage.setItem('alphalens_analysis_history', JSON.stringify(updated));
-                return updated;
-            });
+                // Mark history as error
+                setHistory(prev => {
+                    const updated = prev.map(item =>
+                        item.id === newHistoryId
+                            ? { ...item, status: 'error' as const, endTime: new Date().toLocaleString('zh-CN', { hour12: false }) }
+                            : item
+                    );
+                    localStorage.setItem('alphalens_analysis_history', JSON.stringify(updated));
+                    return updated;
+                });
+            } else {
+                console.error("Stream error:", error);
+                setIsAnalyzing(false);
+
+                // Mark history as error since a network/CORS error occurred
+                setHistory(prev => {
+                    const updated = prev.map(item =>
+                        item.id === newHistoryId
+                            ? { ...item, status: 'error' as const, endTime: new Date().toLocaleString('zh-CN', { hour12: false }) }
+                            : item
+                    );
+                    localStorage.setItem('alphalens_analysis_history', JSON.stringify(updated));
+                    return updated;
+                });
+            }
+        } finally {
+            abortControllerRef.current = null;
         }
     };
 
@@ -352,14 +384,27 @@ export default function AnalysisPage() {
                                         onChange={(e) => setTicker(e.target.value)}
                                         disabled={isAnalyzing}
                                     />
-                                    <button
-                                        type="submit"
-                                        disabled={isAnalyzing || !ticker}
-                                        className="mr-3 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
-                                    >
-                                        {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <PlayCircle className="w-5 h-5" />}
-                                        Analyze
-                                    </button>
+                                    <div className="flex mr-3 gap-2">
+                                        {isAnalyzing ? (
+                                            <button
+                                                type="button"
+                                                onClick={handleStop}
+                                                className="bg-red-600/80 hover:bg-red-500 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
+                                            >
+                                                <XCircle className="w-5 h-5" />
+                                                Stop
+                                            </button>
+                                        ) : (
+                                            <button
+                                                type="submit"
+                                                disabled={!ticker}
+                                                className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+                                            >
+                                                <PlayCircle className="w-5 h-5" />
+                                                Analyze
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             </form>
 

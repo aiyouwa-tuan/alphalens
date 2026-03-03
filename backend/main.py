@@ -181,8 +181,10 @@ async def start_debate(request: Request, body: DebateRequest):
             yield format_sse({"type": "done", "message": "Analysis complete!"})
             
         except asyncio.CancelledError:
-            # Client disconnected
+            # Client disconnected / aborted
             print(f"Client disconnected during {ticker} analysis.")
+            yield format_sse({"type": "error", "message": "Analysis canceled by user."})
+            return
             
     return EventSourceResponse(sse_generator())
 
