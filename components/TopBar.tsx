@@ -83,7 +83,6 @@ export default function TopBar() {
                 <NavItem href="/dashboard" icon={LayoutDashboard} label={t('dashboard')} />
                 <NavItem href="/dashboard/news" icon={Globe} label={t('news')} />
                 <NavItem href="/analysis" icon={Briefcase} label={t('analytics')} />
-                <NavItem href="#" icon={LineChart} label={language === 'en' ? 'Markets' : '市场'} />
             </nav>
 
             {/* Right: Actions */}
