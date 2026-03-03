@@ -3,7 +3,7 @@ import json
 
 
 def create_risk_manager(llm, memory):
-    def risk_manager_node(state) -> dict:
+    async def risk_manager_node(state) -> dict:
 
         company_name = state["company_of_interest"]
 
@@ -47,7 +47,7 @@ Focus on actionable insights and continuous improvement. Build on past lessons, 
 
 IMPORTANT: ALL your thoughts, responses, and reports MUST be written in Chinese (简体中文)."""
 
-        response = llm.invoke(prompt)
+        response = await llm.ainvoke(prompt)
 
         final_decision_text = response.content
         

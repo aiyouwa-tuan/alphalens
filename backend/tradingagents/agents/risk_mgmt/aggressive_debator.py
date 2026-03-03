@@ -3,7 +3,7 @@ import json
 
 
 def create_aggressive_debator(llm):
-    def aggressive_node(state) -> dict:
+    async def aggressive_node(state) -> dict:
         risk_debate_state = state["risk_debate_state"]
         history = risk_debate_state.get("history", "")
         aggressive_history = risk_debate_state.get("aggressive_history", "")
@@ -34,7 +34,7 @@ Here is the current conversation history: {history} Here are the last arguments 
 
 Engage actively by addressing any specific concerns raised, refuting the weaknesses in their logic, and asserting the benefits of risk-taking to outpace market norms. Maintain a focus on debating and persuading, not just presenting data. Challenge each counterpoint to underscore why a high-risk approach is optimal. Output conversationally as if you are speaking without any special formatting."""
 
-        response = llm.invoke(prompt)
+        response = await llm.ainvoke(prompt)
 
         argument = f"Aggressive Analyst: {response.content}"
 

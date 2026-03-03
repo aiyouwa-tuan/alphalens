@@ -6,7 +6,7 @@ from tradingagents.dataflows.config import get_config
 
 
 def create_news_analyst(llm):
-    def news_analyst_node(state):
+    async def news_analyst_node(state):
         current_date = state["trade_date"]
         ticker = state["company_of_interest"]
 
@@ -48,7 +48,7 @@ def create_news_analyst(llm):
         else:
             chain = prompt | llm.bind_tools(tools)
 
-        result = chain.invoke(state["messages"])
+        result = await chain.ainvoke(state["messages"])
 
         report = ""
 

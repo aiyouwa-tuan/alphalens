@@ -4,7 +4,7 @@ import json
 
 
 def create_trader(llm, memory):
-    def trader_node(state, name):
+    async def trader_node(state, name):
         company_name = state["company_of_interest"]
         investment_plan = state["investment_plan"]
         market_research_report = state["market_report"]
@@ -40,7 +40,7 @@ End with a firm decision and always conclude your response with 'FINAL TRANSACTI
             context,
         ]
 
-        result = llm.invoke(messages)
+        result = await llm.ainvoke(messages)
 
         return {
             "messages": [result],

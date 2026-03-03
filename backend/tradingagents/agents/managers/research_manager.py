@@ -3,7 +3,7 @@ import json
 
 
 def create_research_manager(llm, memory):
-    def research_manager_node(state) -> dict:
+    async def research_manager_node(state) -> dict:
         history = state["investment_debate_state"].get("history", "")
         market_research_report = state["market_report"]
         sentiment_report = state["sentiment_report"]
@@ -40,7 +40,7 @@ Debate History:
 {history}
 
 IMPORTANT: ALL your thoughts, responses, and reports MUST be written in Chinese (简体中文)."""
-        response = llm.invoke(prompt)
+        response = await llm.ainvoke(prompt)
 
         new_investment_debate_state = {
             "judge_decision": response.content,

@@ -7,7 +7,7 @@ from tradingagents.dataflows.config import get_config
 
 def create_market_analyst(llm):
 
-    def market_analyst_node(state):
+    async def market_analyst_node(state):
         current_date = state["trade_date"]
         ticker = state["company_of_interest"]
         company_name = state["company_of_interest"]
@@ -78,7 +78,7 @@ Volume-Based Indicators:
         else:
             chain = prompt | llm.bind_tools(tools)
 
-        result = chain.invoke(state["messages"])
+        result = await chain.ainvoke(state["messages"])
 
         report = ""
 
