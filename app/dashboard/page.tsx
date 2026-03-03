@@ -141,42 +141,44 @@ export default function Dashboard() {
                     </div>
 
                     {/* --- ROW 3: Holdings Table (Full Width) --- */}
-                    <div className="md:col-span-12 bg-[var(--bg-panel)] rounded-xl border border-[var(--border-subtle)] overflow-hidden">
-                        <div className="px-6 py-4 border-b border-[var(--border-subtle)] flex items-center justify-between">
-                            <h3 className="font-bold text-white">{t('activePositions')}</h3>
-                            <button className="text-xs text-[var(--text-accent)] hover:text-white transition-colors">{t('manage')}</button>
-                        </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left">
-                                <thead className="bg-[var(--bg-subtle)] text-[var(--text-secondary)]">
-                                    <tr>
-                                        <th className="px-6 py-3 font-medium">{t('asset')}</th>
-                                        <th className="px-6 py-3 font-medium text-right">{t('price')}</th>
-                                        <th className="px-6 py-3 font-medium text-right">{t('qty')}</th>
-                                        <th className="px-6 py-3 font-medium text-right">{t('value')}</th>
-                                        <th className="px-6 py-3 font-medium text-right">{t('pl')}</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-[var(--border-subtle)]">
-                                    {holdings.length > 0 ? holdings.map(h => (
-                                        <tr key={h.symbol} className="hover:bg-[var(--bg-subtle)]/50 transition-colors">
-                                            <td className="px-6 py-3 font-bold">{h.symbol}</td>
-                                            <td className="px-6 py-3 text-right font-mono">${h.currentPrice.toFixed(2)}</td>
-                                            <td className="px-6 py-3 text-right">{h.quantity}</td>
-                                            <td className="px-6 py-3 text-right font-mono">${h.marketValue.toLocaleString()}</td>
-                                            <td className={`px-6 py-3 text-right font-medium ${h.unrealizedPL >= 0 ? 'text-[var(--color-success-text)]' : 'text-[var(--color-danger-text)]'}`}>
-                                                {h.unrealizedPL >= 0 ? '+' : ''}{h.unrealizedPL.toFixed(2)}
-                                            </td>
-                                        </tr>
-                                    )) : (
+                    {isLoggedIn && (
+                        <div className="md:col-span-12 bg-[var(--bg-panel)] rounded-xl border border-[var(--border-subtle)] overflow-hidden">
+                            <div className="px-6 py-4 border-b border-[var(--border-subtle)] flex items-center justify-between">
+                                <h3 className="font-bold text-white">{t('activePositions')}</h3>
+                                <button className="text-xs text-[var(--text-accent)] hover:text-white transition-colors">{t('manage')}</button>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="bg-[var(--bg-subtle)] text-[var(--text-secondary)]">
                                         <tr>
-                                            <td colSpan={5} className="px-6 py-8 text-center text-[var(--text-muted)]">{t('noPositions')}</td>
+                                            <th className="px-6 py-3 font-medium">{t('asset')}</th>
+                                            <th className="px-6 py-3 font-medium text-right">{t('price')}</th>
+                                            <th className="px-6 py-3 font-medium text-right">{t('qty')}</th>
+                                            <th className="px-6 py-3 font-medium text-right">{t('value')}</th>
+                                            <th className="px-6 py-3 font-medium text-right">{t('pl')}</th>
                                         </tr>
-                                    )}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className="divide-y divide-[var(--border-subtle)]">
+                                        {holdings.length > 0 ? holdings.map(h => (
+                                            <tr key={h.symbol} className="hover:bg-[var(--bg-subtle)]/50 transition-colors">
+                                                <td className="px-6 py-3 font-bold">{h.symbol}</td>
+                                                <td className="px-6 py-3 text-right font-mono">${h.currentPrice.toFixed(2)}</td>
+                                                <td className="px-6 py-3 text-right">{h.quantity}</td>
+                                                <td className="px-6 py-3 text-right font-mono">${h.marketValue.toLocaleString()}</td>
+                                                <td className={`px-6 py-3 text-right font-medium ${h.unrealizedPL >= 0 ? 'text-[var(--color-success-text)]' : 'text-[var(--color-danger-text)]'}`}>
+                                                    {h.unrealizedPL >= 0 ? '+' : ''}{h.unrealizedPL.toFixed(2)}
+                                                </td>
+                                            </tr>
+                                        )) : (
+                                            <tr>
+                                                <td colSpan={5} className="px-6 py-8 text-center text-[var(--text-muted)]">{t('noPositions')}</td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                 </div>
             </main>
