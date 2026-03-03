@@ -31,7 +31,58 @@ export interface AnalysisHistoryItem {
     markdown?: string;
 }
 
+/**
+ * Sanitizes the raw content from the backend.
+ * The backend (Python) may return content in one of these formats:
+ * 1. A plain string (ideal)
+ * 2. A Python list repr: "[{'type': 'text', 'text': 'actual content...'}]"
+ * 3. A string with literal "\\n" instead of real newlines
+ */
+const cleanContent = (raw: any): string => {
+    if (!raw) return '';
+
+    let text = typeof raw === 'string' ? raw : JSON.stringify(raw);
+
+    // Case 2: Python list repr like "[{'type': 'text', 'text': '...', 'extras': {...}}]"
+    // Try to extract all 'text' values from the content blocks
+    if (text.trimStart().startsWith('[') && text.includes("'type'") && text.includes("'text'")) {
+        try {
+            // Replace Python single-quotes with double-quotes and Python True/False/None
+            const jsonified = text
+                .replace(/'/g, '"')
+                .replace(/\bTrue\b/g, 'true')
+                .replace(/\bFalse\b/g, 'false')
+                .replace(/\bNone\b/g, 'null');
+            const parsed = JSON.parse(jsonified);
+            if (Array.isArray(parsed)) {
+                text = parsed
+                    .filter((b: any) => b.type === 'text' && typeof b.text === 'string')
+                    .map((b: any) => b.text)
+                    .join('\n');
+            }
+        } catch (e) {
+            // If JSON.parse fails (e.g. the text field itself has quotes),
+            // fall back to a regex extraction
+            const matches = text.matchAll(/"text":\s*"([\s\S]*?)(?:(?<!\\)",|(?<!\\)"}\s*])/g);
+            const parts: string[] = [];
+            for (const m of matches) {
+                parts.push(m[1]);
+            }
+            if (parts.length > 0) text = parts.join('\n');
+        }
+    }
+
+    // Case 3: Convert literal escape sequences to real characters
+    text = text
+        .replace(/\\n\\n/g, '\n\n')
+        .replace(/\\n/g, '\n')
+        .replace(/\\t/g, '\t');
+
+    return text.trim();
+};
+
 const getUserFriendlyStatus = (node: string | null, t: any) => {
+
     switch (node) {
         case "market_data_analyst": return t("statusMarketData");
         case "fundamentals_analyst": return t("statusFundamentals");
@@ -118,23 +169,30 @@ export default function AnalysisPage() {
                 <html>
                 <head>
                     <title>${ticker} Analysis Report</title>
+                    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
                     <style>
                         body {
-                            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-                            line-height: 1.6;
-                            color: #333;
-                            padding: 40px;
-                            max-width: 800px;
+                            font-family: 'Noto Sans SC', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+                            line-height: 1.8;
+                            color: #1e293b;
+                            padding: 48px;
+                            max-width: 820px;
                             margin: 0 auto;
+                            font-size: 15px;
                         }
-                        h1, h2, h3, h4 { color: #111; margin-top: 1.5em; margin-bottom: 0.5em; }
+                        h1 { font-size: 28px; color: #0f172a; margin-bottom: 32px; border-bottom: 3px solid #0066FF; padding-bottom: 16px; }
+                        h2 { font-size: 20px; color: #1e293b; margin-top: 2em; margin-bottom: 0.75em; border-left: 4px solid #0066FF; padding-left: 12px; }
+                        h3, h4 { color: #334155; margin-top: 1.5em; margin-bottom: 0.5em; }
                         p { margin-bottom: 1em; }
-                        strong { color: #000; font-weight: 600; }
+                        strong { color: #0f172a; font-weight: 700; }
                         ul, ol { margin-bottom: 1em; padding-left: 2em; }
-                        li { margin-bottom: 0.25em; }
-                        hr { border: 0; border-top: 1px solid #eee; margin: 2em 0; }
-                        blockquote { border-left: 4px solid #ddd; padding-left: 1em; margin-left: 0; color: #666; }
-                        
+                        li { margin-bottom: 0.4em; }
+                        hr { border: 0; border-top: 1px solid #e2e8f0; margin: 2em 0; }
+                        blockquote { border-left: 4px solid #cbd5e1; padding-left: 1em; margin-left: 0; color: #64748b; background: #f8fafc; padding: 12px 16px; border-radius: 4px; }
+                        table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+                        th, td { border: 1px solid #e2e8f0; padding: 8px 12px; text-align: left; }
+                        th { background: #f1f5f9; font-weight: 600; }
+                        code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
                         @media print {
                             body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                         }
@@ -268,7 +326,10 @@ export default function AnalysisPage() {
                             setMessages((prev) => [...prev, data]);
 
                             if (data.node) setActiveNode(data.node);
-                            if (data.final_trade_decision) setFinalDecision(data.final_trade_decision); // Set final decision
+                            if (data.final_trade_decision) {
+                                const cleaned = cleanContent(data.final_trade_decision);
+                                setFinalDecision(cleaned);
+                            }
                             if (data.type === "done" || data.type === "error") {
                                 setIsAnalyzing(false);
                                 setActiveNode(null);
