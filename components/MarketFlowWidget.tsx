@@ -10,7 +10,7 @@ interface MarketItem {
     name: string;
     price: number;
     changePercent: number;
-    history?: number[]; // Simple array of numbers for sparkline
+    history?: number[];
 }
 
 interface MarketFlowWidgetProps {
@@ -24,35 +24,35 @@ export default function MarketFlowWidget({ title, items, isLoading }: MarketFlow
 
     if (isLoading) {
         return (
-            <div className="h-[200px] bg-[var(--bg-panel)] rounded-lg animate-pulse border border-[var(--border-subtle)] p-4">
-                <div className="h-4 bg-[var(--bg-subtle)] w-1/3 mb-4 rounded"></div>
+            <div className="h-[200px] bg-white rounded-[20px] animate-pulse border border-slate-200 p-4 shadow-sm">
+                <div className="h-4 bg-slate-100 w-1/3 mb-4 rounded"></div>
                 <div className="space-y-3">
-                    <div className="h-8 bg-[var(--bg-subtle)] rounded"></div>
-                    <div className="h-8 bg-[var(--bg-subtle)] rounded"></div>
-                    <div className="h-8 bg-[var(--bg-subtle)] rounded"></div>
+                    <div className="h-8 bg-slate-100 rounded"></div>
+                    <div className="h-8 bg-slate-100 rounded"></div>
+                    <div className="h-8 bg-slate-100 rounded"></div>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="w-full bg-[var(--bg-panel)] rounded-lg border border-[var(--border-subtle)] flex flex-col h-full">
-            <div className="px-4 py-3 border-b border-[var(--border-subtle)] flex justify-between items-center">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">{title}</h3>
-                <span className="text-[10px] text-[var(--text-muted)]">{t('realTime')}</span>
+        <div className="w-full bg-white rounded-[20px] border border-slate-200 flex flex-col h-full shadow-sm">
+            <div className="px-4 py-3 border-b border-slate-100 flex justify-between items-center">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">{title}</h3>
+                <span className="text-[10px] text-slate-400 font-medium">{t('realTime')}</span>
             </div>
 
             <div className="flex-1">
                 <table className="w-full text-sm">
                     <tbody>
                         {items.map((item) => (
-                            <tr key={item.symbol} className="border-b border-[var(--border-subtle)] last:border-0 hover:bg-[var(--bg-subtle)] transition-colors">
+                            <tr key={item.symbol} className="border-b border-slate-100 last:border-0 hover:bg-blue-50/30 transition-colors">
                                 <td className="px-4 py-3">
                                     <div className="flex flex-col">
-                                        <span className="font-bold text-[var(--text-primary)]">
+                                        <span className="font-bold text-slate-800">
                                             {t(item.symbol as any) !== item.symbol ? t(item.symbol as any) : item.symbol}
                                         </span>
-                                        <span className="text-[10px] text-[var(--text-secondary)]">{item.name}</span>
+                                        <span className="text-[10px] text-slate-400">{item.name}</span>
                                     </div>
                                 </td>
 
@@ -65,7 +65,7 @@ export default function MarketFlowWidget({ title, items, isLoading }: MarketFlow
                                                     <Line
                                                         type="monotone"
                                                         dataKey="val"
-                                                        stroke={item.changePercent >= 0 ? "var(--color-success-text)" : "var(--color-danger-text)"}
+                                                        stroke={item.changePercent >= 0 ? "#10B981" : "#EF4444"}
                                                         strokeWidth={1.5}
                                                         dot={false}
                                                         isAnimationActive={false}
@@ -74,18 +74,18 @@ export default function MarketFlowWidget({ title, items, isLoading }: MarketFlow
                                             </ResponsiveContainer>
                                         </div>
                                     ) : (
-                                        <div className="h-[1px] bg-[var(--border-subtle)] w-full opacity-30"></div>
+                                        <div className="h-[1px] bg-slate-200 w-full opacity-30"></div>
                                     )}
                                 </td>
 
                                 <td className="px-4 py-3 text-right">
                                     <div className="flex flex-col items-end">
-                                        <span className="font-mono font-medium">
+                                        <span className="font-mono font-semibold text-slate-900">
                                             {typeof item.price === 'number' ? item.price.toFixed(2) : '0.00'}
                                         </span>
                                         <span className={clsx(
                                             "text-xs font-semibold",
-                                            (item.changePercent || 0) >= 0 ? "text-[var(--color-success-text)]" : "text-[var(--color-danger-text)]"
+                                            (item.changePercent || 0) >= 0 ? "text-emerald-600" : "text-red-500"
                                         )}>
                                             {(item.changePercent || 0) >= 0 ? '+' : ''}{(item.changePercent || 0).toFixed(2)}%
                                         </span>
@@ -96,7 +96,7 @@ export default function MarketFlowWidget({ title, items, isLoading }: MarketFlow
                     </tbody>
                 </table>
                 {(!items || items.length === 0) && (
-                    <div className="p-4 text-center text-[var(--text-muted)] text-xs">{t('noData')}</div>
+                    <div className="p-4 text-center text-slate-400 text-xs font-medium">{t('noData')}</div>
                 )}
             </div>
         </div>

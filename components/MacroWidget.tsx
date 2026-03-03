@@ -23,22 +23,26 @@ export default function MacroWidget() {
             .finally(() => setLoading(false));
     }, []);
 
-    if (loading) return <div className="h-full flex items-center justify-center text-[var(--text-muted)]">Loading Macro...</div>;
+    if (loading) return (
+        <div className="w-full h-full bg-white rounded-[20px] border border-slate-200 p-5 shadow-sm flex items-center justify-center text-slate-400 text-sm font-medium">
+            Loading Macro...
+        </div>
+    );
 
     return (
-        <div className="w-full h-full flex flex-col justify-between bg-[var(--card-bg)] border border-[var(--border-subtle)] rounded-lg p-5">
-            <h3 className="text-xs font-bold text-[var(--text-muted)] tracking-wider uppercase mb-4">{t('macroIndicators')}</h3>
+        <div className="w-full h-full flex flex-col justify-between bg-white border border-slate-200 rounded-[20px] p-5 shadow-sm">
+            <h3 className="text-xs font-bold text-slate-500 tracking-wider uppercase mb-4">{t('macroIndicators')}</h3>
             <div className="grid grid-cols-2 gap-4">
                 {data.map((item) => (
                     <div key={item.symbol} className="flex flex-col">
-                        <span className="text-xs text-[var(--text-muted)] truncate" title={item.shortName}>
+                        <span className="text-xs text-slate-400 truncate font-medium" title={item.shortName}>
                             {t(item.symbol as any) !== item.symbol ? t(item.symbol as any) : item.shortName}
                         </span>
                         <div className="flex items-baseline gap-2">
-                            <span className="text-lg font-bold text-white">
+                            <span className="text-lg font-extrabold text-slate-900">
                                 {item.regularMarketPrice?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
-                            <span className={`text-xs ${item.regularMarketChangePercent >= 0 ? 'text-[var(--color-success-text)]' : 'text-[var(--color-danger-text)]'}`}>
+                            <span className={`text-xs font-semibold ${item.regularMarketChangePercent >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                                 {item.regularMarketChangePercent >= 0 ? '+' : ''}{item.regularMarketChangePercent?.toFixed(2)}%
                             </span>
                         </div>

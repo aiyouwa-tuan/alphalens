@@ -7,24 +7,32 @@
 }
 
 :root {
-  /* Stitch 'Institutional SaaS' Palette - Midnight Navy */
-  --bg-app: #0B1221;
-  --bg-panel: #151E32;
-  --bg-subtle: #1E283D;
+  /* NeuryNX Light Theme - Institutional Default */
+  --bg-app: #F8FAFC;
+  /* Slate 50 - Main background */
+  --bg-panel: #FFFFFF;
+  /* Pure White - Surface/Cards */
+  --bg-subtle: #F1F5F9;
+  /* Slate 100 - Hover states, subtle panels */
 
-  --border-subtle: #2A3441;
-  --border-active: #4B5563;
+  --border-subtle: #E2E8F0;
+  /* Slate 200 */
+  --border-active: #CBD5E1;
+  /* Slate 300 */
 
-  --text-primary: #FFFFFF;
-  --text-secondary: #94A3B8;
-  --text-muted: #64748B;
+  --text-primary: #0F172A;
+  /* Slate 900 - Headings, robust text */
+  --text-secondary: #475569;
+  /* Slate 600 - Secondary text */
+  --text-muted: #94A3B8;
+  /* Slate 400 - Muted text */
 
   --text-accent: #3B82F6;
-  /* Bright Blue */
-  --color-success-text: #34D399;
+  /* NeuryNX Bright Blue */
+  --color-success-text: #10B981;
   /* Emerald Green */
-  --color-danger-text: #F87171;
-  /* Soft Red */
+  --color-danger-text: #EF4444;
+  /* Red 500 */
 
   /* Retain for compatibility if needed */
   --background: var(--bg-app);

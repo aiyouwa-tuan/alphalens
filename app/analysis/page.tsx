@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Building2, Activity, ShieldAlert, Cpu, BrainCircuit, ArrowRight, Loader2, PlayCircle, ChevronDown, ChevronUp, Download, XCircle } from "lucide-react";
+import { motion } from "framer-motion";
+import { BrainCircuit, ArrowRight, Loader2, Download, Square, BarChart2, FileText, History, Clock, TrendingUp, Zap, Search } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useLanguage } from '@/components/LanguageProvider';
@@ -25,12 +25,14 @@ export interface AnalysisHistoryItem {
     id: string;
     ticker: string;
     startTime: string;
+    timestamp: string;
     endTime?: string;
     status: 'running' | 'completed' | 'error';
+    markdown?: string;
 }
 
 const getUserFriendlyStatus = (node: string | null, t: any) => {
-    switch(node) {
+    switch (node) {
         case "market_data_analyst": return t("statusMarketData");
         case "fundamentals_analyst": return t("statusFundamentals");
         case "sentiment_analyst": return t("statusSentiment");
@@ -71,6 +73,18 @@ export default function AnalysisPage() {
     const saveHistory = (newHistory: AnalysisHistoryItem[]) => {
         setHistory(newHistory);
         localStorage.setItem('alphalens_analysis_history', JSON.stringify(newHistory.slice(0, 50))); // Keep last 50
+    };
+
+    const clearHistory = () => {
+        setHistory([]);
+        localStorage.removeItem('alphalens_analysis_history');
+    };
+
+    const loadHistoryItem = (item: AnalysisHistoryItem) => {
+        if (item.markdown) {
+            setFinalDecision(item.markdown);
+            setTicker(item.ticker);
+        }
     };
 
     // Ref for auto-scrolling the terminal
@@ -202,6 +216,7 @@ export default function AnalysisPage() {
                     id: newHistoryId,
                     ticker: resolvedTicker,
                     startTime: nowTime,
+                    timestamp: nowTime,
                     status: 'running' as const
                 }, ...prev].slice(0, 50);
                 localStorage.setItem('alphalens_analysis_history', JSON.stringify(updated));
@@ -346,199 +361,223 @@ export default function AnalysisPage() {
     const fundamentalsReport = messages.find(m => m.fundamentals_report)?.fundamentals_report;
 
     return (
-        <div className="min-h-screen bg-[#0A0A0B] text-slate-200">
-            {/* Background Gradients */}
-            <div className="fixed inset-0 z-0 pointer-events-none">
-                <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-900/20 blur-[120px] rounded-full" />
-                <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-indigo-900/20 blur-[120px] rounded-full" />
-            </div>
+        <div className="min-h-screen bg-[#F8FAFC] text-slate-900 pb-20 relative overflow-hidden">
+            {/* Background Effects (subtle gradients from Figma) */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[600px] bg-blue-100/50 blur-[120px] rounded-full pointer-events-none opacity-60"></div>
 
-            <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div className="max-w-7xl mx-auto px-6 pt-16 relative z-10">
 
-                {/* Header Area */}
-                <div className="text-center mb-10 mt-2">
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 mb-6"
-                    >
-                        <BrainCircuit className="w-5 h-5" />
-                        <span className="text-sm font-medium">AlphaLens Trading Agents powered by Gemini</span>
-                    </motion.div>
-                    <h1 className="text-5xl font-extrabold tracking-tight text-white mb-6">
-                        {t('analysisTitle')}
+                {/* HERO AREA */}
+                <div className="flex flex-col items-center text-center max-w-3xl mx-auto mb-16">
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-blue-600 font-semibold text-xs mb-6 shadow-sm">
+                        <BrainCircuit className="w-3.5 h-3.5" />
+                        <span>Multi-Agent AI Analysis</span>
+                    </div>
+
+                    <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 mb-6 leading-tight">
+                        Institutional-Grade Stock Intelligence
                     </h1>
-                    <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-                        {t('analysisSubtitle')}
+
+                    <p className="text-lg text-slate-500 max-w-2xl mx-auto mb-10 leading-relaxed font-medium">
+                        Four specialized AI agents — Technical, Fundamental, Macro, and Sentiment — debate every trade so you don't have to.
                     </p>
 
+                    {/* Search Bar matching Figma */}
+                    <div className="w-full max-w-2xl">
+                        <form onSubmit={handleAnalyze} className="relative group flex items-center bg-white border border-slate-200 shadow-lg shadow-slate-200/50 rounded-2xl p-2 transition-all hover:shadow-xl hover:border-slate-300">
+                            <div className="pl-4 pr-3 text-slate-400">
+                                <Search className="w-5 h-5" />
+                            </div>
+                            <input
+                                type="text"
+                                className="flex-1 bg-transparent text-slate-900 text-lg focus:outline-none placeholder-slate-400 font-medium h-12"
+                                placeholder={t("enterTicker")}
+                                value={ticker}
+                                onChange={(e) => setTicker(e.target.value.toUpperCase())}
+                                disabled={isAnalyzing}
+                                autoFocus
+                            />
+                            {isAnalyzing ? (
+                                <button
+                                    type="button"
+                                    onClick={handleStop}
+                                    className="px-6 py-3 bg-red-50 text-red-600 font-bold rounded-xl hover:bg-red-100 transition-colors flex items-center gap-2"
+                                >
+                                    <Square className="w-4 h-4 fill-current" />
+                                    {t("stopBtn")}
+                                </button>
+                            ) : (
+                                <button
+                                    type="submit"
+                                    disabled={!ticker.trim()}
+                                    className="px-6 py-3 bg-[#0066FF] text-white font-bold rounded-xl hover:bg-blue-700 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-blue-500/20"
+                                >
+                                    <span>Analyze Now</span>
+                                    <ArrowRight className="w-4 h-4" />
+                                </button>
+                            )}
+                        </form>
+                    </div>
 
-                    {/* Hero Search Bar - Centered */}
-                    <div className="max-w-3xl mx-auto mb-10 mt-8">
-                        <form onSubmit={handleAnalyze} className="relative group">
-                            <div className="absolute inset-0 bg-blue-500/20 rounded-xl blur-lg transition-opacity opacity-0 group-hover:opacity-100" />
-                            <div className="relative flex items-center bg-[#111113] border border-white/10 rounded-xl overflow-hidden shadow-2xl">
-                                <input
-                                    type="text"
-                                    placeholder={t('enterTicker')}
-                                    className="w-full bg-transparent border-none text-white px-6 py-5 text-lg outline-none placeholder:text-slate-500 uppercase font-mono"
-                                    value={ticker}
-                                    onChange={(e) => setTicker(e.target.value)}
-                                    disabled={isAnalyzing}
-                                />
-                                <div className="flex mr-3 gap-2">
-                                    {isAnalyzing ? (
-                                        <button
-                                            type="button"
-                                            onClick={handleStop}
-                                            className="bg-red-600/80 hover:bg-red-500 text-white px-8 py-3.5 rounded-lg font-medium transition-colors flex items-center gap-2"
-                                        >
-                                            <XCircle className="w-5 h-5" />
-                                            {t('stopBtn')}
-                                        </button>
-                                    ) : (
-                                        <button
-                                            type="submit"
-                                            disabled={!ticker}
-                                            className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3.5 rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
-                                        >
-                                            <PlayCircle className="w-5 h-5" />
-                                            {t('analyzeBtn')}
+                    {/* Sub Search row */}
+                    {!isAnalyzing && !finalDecision && (
+                        <div className="flex flex-wrap items-center justify-center gap-8 mt-8 text-sm">
+                            <div className="flex items-center gap-2">
+                                <span className="text-slate-400 font-medium mr-1 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Recent:</span>
+                                {["AAPL", "TSLA", "NVDA", "MSFT"].map(t => (
+                                    <button onClick={() => { setTicker(t); }} key={t} className="px-3 py-1 rounded-md bg-white border border-slate-200 text-slate-600 font-semibold hover:border-blue-300 hover:text-blue-600 transition-colors shadow-sm">{t}</button>
+                                ))}
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-slate-400 font-medium mr-1 flex items-center gap-1"><TrendingUp className="w-3.5 h-3.5" /> Trending:</span>
+                                <span className="px-2 py-1 rounded-md bg-emerald-50 text-emerald-600 font-bold border border-emerald-100">NVDA +2.18%</span>
+                                <span className="px-2 py-1 rounded-md bg-rose-50 text-rose-600 font-bold border border-rose-100">TSLA -1.63%</span>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* 3 Overview Cards - (Shown when idle matching Figma bottom half) */}
+                {!isAnalyzing && !finalDecision && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16 max-w-5xl mx-auto">
+                        <div className="bg-white rounded-[20px] p-6 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center mb-5">
+                                <BrainCircuit className="w-5 h-5 text-blue-600" />
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-900 mb-2">Multi-Agent Debate</h3>
+                            <p className="text-slate-500 text-sm leading-relaxed">4 specialized AI analysts debate every stock from all angles before reaching consensus.</p>
+                        </div>
+                        <div className="bg-white rounded-[20px] p-6 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center mb-5">
+                                <TrendingUp className="w-5 h-5 text-emerald-600" />
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-900 mb-2">Technical Analysis</h3>
+                            <p className="text-slate-500 text-sm leading-relaxed">Price action, momentum indicators, chart patterns and volume analysis.</p>
+                        </div>
+                        <div className="bg-white rounded-[20px] p-6 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                            <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center mb-5">
+                                <BarChart2 className="w-5 h-5 text-amber-600" />
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-900 mb-2">Fundamental Research</h3>
+                            <p className="text-slate-500 text-sm leading-relaxed">Earnings quality, balance sheet health, valuation multiples and competitive moat.</p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Grid Layout strictly for active analysis or results */}
+                {(isAnalyzing || finalDecision) && (
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-10">
+
+                        {/* LEFT COLUMN: HISTORY / WATCHLIST */}
+                        <div className="lg:col-span-4 flex flex-col gap-6 relative">
+                            <div className="bg-white border border-slate-200 rounded-[20px] flex flex-col shadow-sm max-h-[calc(100vh-140px)] sticky top-24 w-full overflow-hidden">
+                                <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white z-10">
+                                    <h3 className="text-[15px] font-bold text-slate-800 flex items-center gap-2">
+                                        <History className="w-4 h-4 text-slate-400" />
+                                        {t("recentAnalyses")}
+                                    </h3>
+                                    {history.length > 0 && (
+                                        <button onClick={clearHistory} className="text-xs font-semibold text-slate-400 hover:text-red-500 transition-colors">
+                                            {t("clearHistory")}
                                         </button>
                                     )}
                                 </div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
-                {/* 2-Column Grid Layout */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 max-w-7xl mx-auto text-left">
-
-                    {/* Left Column (History) - 4 Cols */}
-                    <div className="lg:col-span-4 flex flex-col gap-6 relative">
-                        {/* Left Column: History Panel */}
-                        <div className="bg-[#111113] border border-white/10 rounded-2xl flex flex-col max-h-[calc(100vh-200px)] sticky top-6 shadow-xl w-full">
-                            <div className="p-4 border-b border-white/10 flex items-center justify-between shrink-0">
-                                <h3 className="text-sm font-semibold text-slate-300 px-1">{t('recentAnalyses')}</h3>
-                                {history.length > 0 && (
-                                    <button
-                                        onClick={() => {
-                                            localStorage.removeItem('alphalens_analysis_history');
-                                            setHistory([]);
-                                        }}
-                                        className="text-xs text-slate-500 hover:text-red-400 transition-colors"
-                                    >
-                                        {t('clearHistory')}
-                                    </button>
-                                )}
-                            </div>
-                            <div className="p-4 overflow-y-auto space-y-3 flex-1 custom-scrollbar">
-                                {history.length === 0 ? (
-                                    <div className="h-full flex flex-col items-center justify-center text-slate-500 text-sm pb-8">
-                                        <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 mb-4 flex items-center justify-center shadow-lg">
-                                            <Activity className="w-6 h-6 text-slate-400 opacity-60" />
+                                <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/50">
+                                    {history.length === 0 ? (
+                                        <div className="text-center text-slate-400 text-sm mt-10 p-6 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                                            {t("noPastAnalyses")}
                                         </div>
-                                        <span className="font-medium">{t('noPastAnalyses')}</span>
-                                    </div>
-                                ) : (
-                                    history.map((item) => (
-                                        <div key={item.id} className="bg-white/5 border border-white/5 rounded-xl p-3 hover:border-white/10 transition-colors cursor-pointer" onClick={() => {
-                                            if (!isAnalyzing) setTicker(item.ticker);
-                                        }}>
-                                            <div className="flex justify-between items-start mb-2">
-                                                <span className="font-mono font-bold text-blue-400 text-base">{item.ticker}</span>
-                                                {item.status === 'running' && <span className="flex items-center gap-1 text-[10px] uppercase font-bold text-yellow-500 bg-yellow-500/10 px-2 py-0.5 rounded-full"><Loader2 className="w-3 h-3 animate-spin" /> Running</span>}
-                                                {item.status === 'completed' && <span className="text-[10px] uppercase font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">Completed</span>}
-                                                {item.status === 'error' && <span className="text-[10px] uppercase font-bold text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full">Error</span>}
-                                            </div>
-                                            <div className="text-[11px] text-slate-500 flex flex-col gap-1 font-mono">
-                                                <div className="flex justify-between">
-                                                    <span>Start:</span>
-                                                    <span className="text-slate-400">{item.startTime}</span>
+                                    ) : (
+                                        history.map((h, i) => (
+                                            <button
+                                                key={i}
+                                                onClick={() => loadHistoryItem(h)}
+                                                className="w-full bg-white border border-slate-200 p-4 rounded-xl text-left hover:border-blue-300 hover:shadow-md transition-all group duration-200"
+                                            >
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <span className="font-bold text-slate-800 tracking-tight text-lg">{h.ticker}</span>
+                                                    <span className="text-xs text-slate-400 font-medium">{new Date(h.timestamp).toLocaleString(undefined, { month: 'short', day: 'numeric' })}</span>
                                                 </div>
-                                                {item.endTime && (
-                                                    <div className="flex justify-between">
-                                                        <span>End:</span>
-                                                        <span className="text-slate-400">{item.endTime}</span>
-                                                    </div>
-                                                )}
-                                            </div>
+                                                <p className="text-xs text-slate-500 line-clamp-2 font-medium leading-relaxed group-hover:text-slate-600 transition-colors">
+                                                    {h.markdown?.substring(0, 80) ?? ''}...
+                                                </p>
+                                            </button>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* RIGHT COLUMN: MAIN RESULTS */}
+                        <div className="lg:col-span-8 flex flex-col gap-6">
+
+                            {/* Elegant Progress/Loading State */}
+                            {isAnalyzing && !finalDecision && (
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                                    className="bg-white rounded-[24px] border border-blue-100 p-16 shadow-xl shadow-blue-500/5 flex flex-col items-center justify-center min-h-[500px]"
+                                >
+                                    <div className="relative mb-8">
+                                        <div className="absolute inset-0 bg-blue-100 rounded-2xl blur-xl animate-pulse" />
+                                        <div className="w-20 h-20 rounded-2xl bg-[#0066FF] flex items-center justify-center relative z-10 shadow-lg shadow-blue-500/30">
+                                            <Zap className="w-10 h-10 text-white animate-bounce" />
                                         </div>
-                                    ))
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Right Column (Analysis Results) */}
-                    <div className="lg:col-span-8 flex flex-col gap-6">
-
-                        {/* Elegant Progress/Loading State */}
-                        {isAnalyzing && !finalDecision && (
-                            <div className="rounded-2xl bg-[#111113] border border-blue-500/20 p-12 shadow-xl shadow-blue-900/10 flex flex-col items-center justify-center min-h-[400px]">
-                                <div className="relative mb-8">
-                                   <div className="absolute inset-0 bg-blue-500/20 rounded-full blur-xl animate-pulse" />
-                                   <BrainCircuit className="w-16 h-16 text-blue-400 relative z-10 animate-bounce" />
-                                </div>
-                                <h3 className="text-2xl font-bold text-white mb-4">
-                                    {t("analyzingLabel")}{ticker}...
-                                </h3>
-                                <p className="text-slate-400 text-center max-w-md">
-                                    {getUserFriendlyStatus(activeNode, t)}
-                                </p>
-                                <div className="w-64 h-2 bg-slate-800 rounded-full mt-8 overflow-hidden relative">
-                                    <motion.div 
-                                        initial={{ x: "-100%" }}
-                                        animate={{ x: "200%" }}
-                                        transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
-                                        className="absolute top-0 bottom-0 left-0 w-1/2 bg-blue-500 rounded-full"
-                                    />
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Final Decision Area */}
-                        {finalDecision && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                                className="flex-1 rounded-2xl bg-[#111113] border border-blue-500/20 p-8 shadow-xl shadow-blue-900/10 flex flex-col"
-                            >
-                                <div className="flex items-center justify-between mb-8 border-b border-white/10 pb-6">
-                                    <h3 className="text-2xl text-white font-bold flex items-center gap-3">
-                                        <ShieldAlert className="w-7 h-7 text-blue-500" />
-                                        {t("finalTradingPlan")}
+                                    </div>
+                                    <h3 className="text-3xl font-bold text-slate-900 mb-4 tracking-tight">
+                                        {t("analyzingLabel")}{ticker}
                                     </h3>
-                                    <button
-                                        onClick={handleDownloadPDF}
-                                        disabled={isExportingPDF}
-                                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/20 rounded-lg transition-all text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        {isExportingPDF ? (
-                                            <Loader2 className="w-4 h-4 animate-spin" />
-                                        ) : (
-                                            <Download className="w-4 h-4" />
-                                        )}
-                                        {isExportingPDF ? t("exporting") : t("downloadPdf")}
-                                    </button>
-                                </div>
-                                <div ref={pdfContentRef} className="prose prose-invert prose-blue max-w-none text-slate-300">
-                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                        {finalDecision}
-                                    </ReactMarkdown>
-                                </div>
-                            </motion.div>
-                        )}
+                                    <p className="text-slate-500 text-center max-w-sm text-lg font-medium">
+                                        {getUserFriendlyStatus(activeNode, t)}
+                                    </p>
+                                    <div className="w-64 h-2 bg-slate-100 rounded-full mt-10 overflow-hidden relative border border-slate-200/50">
+                                        <motion.div
+                                            initial={{ x: "-100%" }}
+                                            animate={{ x: "200%" }}
+                                            transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                                            className="absolute top-0 bottom-0 left-0 w-1/2 bg-[#0066FF] rounded-full shadow-md shadow-blue-500/50"
+                                        />
+                                    </div>
+                                    <p className="mt-6 text-xs text-slate-400 font-semibold tracking-wider uppercase">Live Execution Status</p>
+                                </motion.div>
+                            )}
 
-                        {/* Empty State */}
-                        {!finalDecision && !isAnalyzing && (
-                            <div className="flex-1 rounded-2xl border border-dashed border-white/10 bg-white/5 flex flex-col items-center justify-center text-slate-500 min-h-[400px]">
-                                 <Activity className="w-12 h-12 text-slate-600 mb-4 opacity-50" />
-                                 <p className="text-lg">{t("analysisResultWillAppearHere")}</p>
-                            </div>
-                        )}
+                            {/* Final Decision Formatted Document */}
+                            {finalDecision && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                                    className="flex-1 rounded-[20px] bg-white border border-slate-200 shadow-md flex flex-col"
+                                >
+                                    <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50 rounded-t-[20px]">
+                                        <h3 className="text-xl text-slate-900 font-extrabold flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                                                <FileText className="w-4 h-4 text-blue-600" />
+                                            </div>
+                                            {t("finalTradingPlan")}
+                                        </h3>
+                                        <button
+                                            onClick={handleDownloadPDF}
+                                            disabled={isExportingPDF}
+                                            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-blue-600 shadow-sm rounded-xl transition-all text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {isExportingPDF ? (
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                            ) : (
+                                                <Download className="w-4 h-4" />
+                                            )}
+                                            {isExportingPDF ? t("exporting") : t("downloadPdf")}
+                                        </button>
+                                    </div>
+                                    {/* The markdown body */}
+                                    <div ref={pdfContentRef} className="p-8 prose prose-slate max-w-none text-slate-700 bg-white rounded-b-[20px]">
+                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                            {finalDecision}
+                                        </ReactMarkdown>
+                                    </div>
+                                </motion.div>
+                            )}
                         </div>
                     </div>
-                </div>
+                )}
             </div>
         </div>
     );

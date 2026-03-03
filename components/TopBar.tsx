@@ -6,23 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { useLanguage } from '@/components/LanguageProvider';
 import { clsx } from 'clsx';
-import { Activity, BrainCircuit, Globe, Settings, LogOut, LogIn, Menu, X } from 'lucide-react';
-
-interface MarketItem {
-    symbol: string;
-    value: string;
-    change: string;
-    up: boolean;
-    timeStr: string;
-}
-
-const Icons = {
-    Logo: () => (
-        <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6 text-[var(--text-accent)]" stroke="currentColor" strokeWidth="2">
-            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-        </svg>
-    ),
-};
+import { LayoutDashboard, Briefcase, Star, LineChart, Bell, Settings, ChevronDown, Zap, Globe } from 'lucide-react';
 
 export default function TopBar() {
     const { t, language, setLanguage } = useLanguage();
@@ -64,120 +48,100 @@ export default function TopBar() {
         router.refresh();
     };
 
-    // Market Ticker State
-    const [indices, setIndices] = useState<MarketItem[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        async function fetchData() {
-            try {
-                const res = await fetch('/api/market-overview');
-                if (!res.ok) throw new Error('Failed');
-                const data = await res.json();
-
-                const formatItem = (name: string, item: any) => {
-                    if (!item) return null;
-                    const change = item.changePercent || 0;
-                    return {
-                        symbol: name,
-                        value: (item.price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-                        change: (change > 0 ? '+' : '') + change.toFixed(1) + '%',
-                        up: change >= 0,
-                        timeStr: 'Recent'
-                    };
-                };
-
-                const newIndices = [
-                    formatItem('S&P 500', data.indices?.us?.find((x: any) => x.symbol === '^GSPC')),
-                    formatItem('NASDAQ', data.indices?.us?.find((x: any) => x.symbol === '^IXIC')),
-                    formatItem('DOW', data.indices?.us?.find((x: any) => x.symbol === '^DJI')),
-                    formatItem('GOLD', data.commodities?.find((x: any) => x.symbol === 'Gold')),
-                    formatItem('BTC', data.commodities?.find((x: any) => x.symbol === 'BTC'))
-                ].filter(Boolean) as MarketItem[];
-
-                setIndices(newIndices);
-            } catch (e) {
-                console.error(e);
-            } finally {
-                setLoading(false);
-            }
-        }
-        fetchData();
-        const interval = setInterval(fetchData, 30000);
-        return () => clearInterval(interval);
-    }, [language]);
-
     const NavItem = ({ href, icon: Icon, label }: { href: string, icon: any, label: string }) => {
-        const active = pathname === href;
+        const active = pathname === href || (href === '/analysis' && pathname.startsWith('/analysis'));
         return (
             <Link href={href} className={clsx(
-                "flex flex-row items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
-                active ? "bg-[var(--bg-subtle)] text-white" : "text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-white"
+                "flex flex-row items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200",
+                active 
+                    ? "bg-blue-50 text-blue-600 shadow-sm border border-blue-100/50" 
+                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
             )}>
-                <Icon className="w-4 h-4" />
+                <Icon className={clsx("w-4 h-4", active ? "text-blue-600 stroke-[2.5]" : "text-slate-400")} />
                 <span>{label}</span>
             </Link>
         );
     };
 
     return (
-        <div className="h-16 border-b border-[var(--border-subtle)] bg-[var(--bg-app)] flex flex-row items-center justify-between px-6 sticky top-0 z-50">
-            {/* Left Box: Logo & Nav Links */}
-            <div className="flex flex-row items-center gap-8">
-                <Link href="/" className="flex flex-row items-center gap-3">
-                    <Icons.Logo />
-                    <span className="font-bold text-lg hidden sm:block tracking-tight text-white">AlphaLens</span>
-                </Link>
-
-                <nav className="hidden md:flex flex-row items-center gap-1">
-                    <NavItem href="/dashboard" icon={Activity} label={t('dashboard')} />
-                    <NavItem href="/dashboard/news" icon={Globe} label={t('news')} />
-                    <NavItem href="/analysis" icon={BrainCircuit} label="AI Analysis" />
-                </nav>
-            </div>
-
-            {/* Center: Mini Ticker (Optional depending on width) */}
-            <div className="hidden lg:flex items-center gap-6 overflow-hidden max-w-lg">
-                {!loading && indices.map((item) => (
-                    <div key={item.symbol} className="flex items-center gap-1.5 text-xs font-mono">
-                        <span className="font-bold text-[var(--text-muted)]">{item.symbol}</span>
-                        <span className={item.up ? "text-[var(--color-success-text)]" : "text-[var(--color-danger-text)]"}>
-                            {item.change}
-                        </span>
+        <div className="h-[72px] border-b border-slate-200 bg-white flex flex-row items-center justify-between px-6 sticky top-0 z-50">
+            {/* Left: Logo */}
+            <div className="flex items-center gap-2 min-w-[200px]">
+                <Link href="/" className="flex items-center gap-2">
+                    <div className="w-9 h-9 rounded-[10px] bg-[#0066FF] flex items-center justify-center shadow-md shadow-blue-500/20">
+                        <Zap className="w-5 h-5 text-white fill-white" />
                     </div>
-                ))}
+                    <div className="flex items-center gap-1.5 ml-1">
+                        <span className="font-bold text-[22px] tracking-tight text-slate-900">Neury<span className="text-[#0066FF]">NX</span></span>
+                        <span className="px-1.5 py-0.5 rounded-[6px] text-[10px] font-bold bg-blue-50 text-[#0066FF] border border-blue-100">AI</span>
+                    </div>
+                </Link>
             </div>
+
+            {/* Center: Navigation Pills */}
+            <nav className="hidden md:flex flex-row items-center gap-2 bg-slate-50/50 p-1 rounded-full border border-slate-100">
+                <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" />
+                <NavItem href="/analysis" icon={Briefcase} label="Analysis" />
+                <NavItem href="/dashboard/news" icon={Globe} label="News" />
+                <NavItem href="#" icon={LineChart} label="Markets" />
+            </nav>
 
             {/* Right: Actions */}
-            <div className="flex flex-row items-center gap-4">
+            <div className="flex flex-row items-center gap-3 min-w-[200px] justify-end">
+                
+                {/* Market Status Pill */}
+                <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-full border border-slate-200/60 shadow-sm">
+                    <LineChart className="w-4 h-4 text-slate-400" />
+                    <span className="text-sm font-medium text-slate-600">Market: Open</span>
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse ml-1 opacity-90"></div>
+                </div>
+
+                <div className="h-6 w-px bg-slate-200 mx-2"></div>
+
+                {/* Icons */}
                 <button
                     onClick={() => setLanguage(language === 'en' ? 'zh' : 'en')}
-                    className="flex flex-row items-center gap-1.5 text-xs font-medium text-[var(--text-secondary)] hover:text-white px-2 py-1.5 rounded-md hover:bg-[var(--bg-subtle)] transition-colors"
+                    className="p-2 rounded-full hover:bg-slate-100 text-slate-500 transition-colors flex items-center justify-center font-bold text-xs"
                     title={language === 'en' ? 'Switch to Chinese' : 'Switch to English'}
                 >
-                    <Globe className="w-3.5 h-3.5" />
                     {language === 'en' ? 'CN' : 'EN'}
                 </button>
 
+                <button className="p-2 rounded-full hover:bg-slate-100 text-slate-500 transition-colors relative">
+                    <Bell className="w-5 h-5" />
+                    <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500 border-2 border-white"></div>
+                </button>
+                <button className="p-2 rounded-full hover:bg-slate-100 text-slate-500 transition-colors">
+                    <Settings className="w-5 h-5" />
+                </button>
+
+                {/* User Profile */}
                 {user ? (
                     <button
                         onClick={handleLogout}
                         title={t('logout')}
-                        className="flex flex-row items-center gap-2 text-xs font-medium text-[var(--text-secondary)] hover:text-white px-2 py-1.5 rounded-md hover:bg-[var(--bg-subtle)] transition-colors"
+                        className="flex items-center gap-2 ml-2 pl-2 border-l border-slate-200 hover:opacity-80 transition-opacity"
                     >
-                        <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center text-[10px] font-bold text-white shadow-sm">
-                            {user.email?.[0].toUpperCase() || 'U'}
+                        <div className="w-8 h-8 rounded-full bg-[#0066FF] flex items-center justify-center text-xs font-bold text-white shadow-sm">
+                            NX
+                        </div>
+                        <div className="hidden sm:flex items-center gap-1">
+                            <span className="text-sm font-semibold text-slate-700">Pro User</span>
+                            <ChevronDown className="w-4 h-4 text-slate-400" />
                         </div>
                     </button>
                 ) : (
-                    <Link
-                        href="/login"
-                        title={t('login')}
-                        className="flex flex-row items-center gap-2 text-xs font-medium bg-[var(--text-accent)] text-white px-3 py-1.5 rounded-md hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20"
-                    >
-                        <LogIn className="w-3.5 h-3.5" />
-                        <span>Login</span>
-                    </Link>
+                    <div className="flex items-center gap-3 ml-2 border-l border-slate-200 pl-4">
+                        <Link href="/login" className="text-sm font-semibold text-slate-600 hover:text-slate-900">
+                            Log in
+                        </Link>
+                        <Link
+                            href="/login"
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0066FF] text-white text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm"
+                        >
+                            <span>Sign up</span>
+                        </Link>
+                    </div>
                 )}
             </div>
         </div>
