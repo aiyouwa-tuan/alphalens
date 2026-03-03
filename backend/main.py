@@ -98,25 +98,12 @@ async def start_debate(request: Request, body: DebateRequest):
 
             yield format_sse({"type": "status", "message": f"Starting analysis for {ticker}..."})
             
-            # Use asyncio to run the synchronous stream generator without blocking the event loop
-            def run_stream():
-                args["stream_mode"] = "updates"
-                for chunk in ta.graph.stream(init_agent_state, **args):
-                    yield chunk
-
-            # We'll adapt it by extracting data safely 
-            stream_gen = run_stream()
+            # Use native async streaming to allow clean cancellation propagation to LLM calls
+            args["stream_mode"] = "updates"
             
-            _SENTINEL = object()
-            while True:
-                # Get next chunk in a background thread to prevent blocking
-                try:
-                    chunk = await asyncio.to_thread(next, stream_gen, _SENTINEL)
-                    if chunk is _SENTINEL:
-                        break
-                except Exception as e:
-                    yield format_sse({"type": "error", "message": str(e)})
-                    break
+            # Loop runs asynchronously. If client disconnects, CancelledError is thrown here 
+            # and automatically propagates to any active LLM calls inside the graph, killing them.
+            async for chunk in ta.graph.astream(init_agent_state, **args):
                 
                 # We extract the newly added messages or relevant state updates
                 if getattr(chunk, "get", None):
