@@ -43,25 +43,20 @@ const cleanContent = (raw: any): string => {
 
     let text = typeof raw === 'string' ? raw : JSON.stringify(raw);
 
-    // Python list repr like "[{'type': 'text', 'text': '...', 'extras': {...}}]"
-    if (text.trimStart().startsWith('[') && text.includes("'text'")) {
-        const textPrefix = "'text': '";
-        const startOfText = text.indexOf(textPrefix);
+    // Remove Python List repr wrappers around Anthropic ContentBlocks
+    // This safely strips the `[{'type': 'text', 'text': '` prefix and trailing keys
+    text = text.replace(/\[\s*\{\s*'type'\s*:\s*'text'\s*,\s*'text'\s*:\s*'/g, '');
 
-        if (startOfText !== -1) {
-            const possibleEndings = ["', 'type':", "', 'extras':", "'}]"];
-            let endOfText = -1;
-            for (const ending of possibleEndings) {
-                const idx = text.lastIndexOf(ending);
-                if (idx !== -1 && idx > endOfText) {
-                    endOfText = idx;
-                }
-            }
-            if (endOfText !== -1) {
-                text = text.substring(startOfText + textPrefix.length, endOfText);
-            }
-        }
-    }
+    // Safely strip the suffix like `', 'extras': {...}}]` or `'}]`
+    // Matches the closing `'` of the text field optionally followed by other keys until `}]`
+    text = text.replace(/',\s*'extras'\s*:[^\]]*\}\s*\]/g, '');
+    text = text.replace(/',\s*'cache_control'\s*:[^\]]*\}\s*\]/g, '');
+    text = text.replace(/',\s*'[^']+'\s*:[^\]]*\}\s*\]/g, ''); // catch-all for other ending keys
+    text = text.replace(/'\s*\}\s*\]/g, '');
+
+    // Cleanup bare array markers if an empty array was sent (e.g. `[]` from other components like market data)
+    if (text === '[]') text = '';
+    text = text.replace(/^\[\]$/g, '');
 
     // Convert literal escape sequences to real characters properly
     text = text
@@ -72,7 +67,6 @@ const cleanContent = (raw: any): string => {
 
     return text.trim();
 };
-
 const getUserFriendlyStatus = (node: string | null, t: any) => {
 
     switch (node) {
