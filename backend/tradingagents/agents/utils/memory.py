@@ -25,7 +25,10 @@ class FinancialSituationMemory:
         self.documents: List[str] = []
         self.recommendations: List[str] = []
         self.bm25 = None
-        self.embeddings_model = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+        self.embeddings_model = GoogleGenerativeAIEmbeddings(
+            model="models/embedding-001",
+            max_retries=5
+        )
         self.document_embeddings: List[List[float]] = []
 
     def _tokenize(self, text: str) -> List[str]:
