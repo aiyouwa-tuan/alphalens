@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Building2, Activity, ShieldAlert, Cpu, BrainCircuit, ArrowRight, Loader2, PlayCircle, ChevronDown, ChevronUp, Download, XCircle } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { useLanguage } from '@/components/LanguageProvider';
 
 type AgentMessage = {
     type: "status" | "update" | "error" | "done";
@@ -29,10 +30,8 @@ export interface AnalysisHistoryItem {
 }
 
 export default function AnalysisPage() {
+    const { t } = useLanguage();
     const [ticker, setTicker] = useState("");
-    const [provider, setProvider] = useState<"google" | "doubao">("google");
-    const [apiKey, setApiKey] = useState("");
-    const [model, setModel] = useState("gemini-3-pro-preview");
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [messages, setMessages] = useState<AgentMessage[]>([]);
     const [activeNode, setActiveNode] = useState<string | null>(null);
@@ -150,13 +149,6 @@ export default function AnalysisPage() {
             abortControllerRef.current = null;
         }
     };
-
-    // Auto-update model when provider changes if none is typed
-    useEffect(() => {
-        if (provider === "google") setModel("gemini-3-pro-preview");
-        else if (provider === "doubao") setModel("ep-202xxx-xxx"); // placeholder for their endpoint ID
-    }, [provider]);
-
     const handleAnalyze = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!ticker) return;
@@ -206,9 +198,9 @@ export default function AnalysisPage() {
 
             const payload = {
                 ticker: resolvedTicker,
-                provider,
-                model,
-                api_key: apiKey
+                provider: "google",
+                model: "gemini-3-pro-preview",
+                api_key: ""
             };
 
             const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
@@ -361,103 +353,61 @@ export default function AnalysisPage() {
                         <span className="text-sm font-medium">AlphaLens Trading Agents powered by Gemini</span>
                     </motion.div>
                     <h1 className="text-5xl font-extrabold tracking-tight text-white mb-6">
-                        Multi-Agent <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">Deep Research</span>
+                        {t('analysisTitle')}
                     </h1>
                     <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-                        Input a stock ticker to unleash our autonomous team of AI analysts. They will debate market sentiment, technicals, and fundamentals to provide an objective trading signal.
+                        {t('analysisSubtitle')}
                     </p>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16 mt-10 max-w-5xl mx-auto">
-                        {/* Left Column: Input Form and Config */}
-                        <div className="lg:col-span-2 flex flex-col gap-6">
 
-                            {/* Input Area */}
-
-                            <form onSubmit={handleAnalyze} className="relative group">
-                                <div className="absolute inset-0 bg-blue-500/20 rounded-xl blur-lg transition-opacity opacity-0 group-hover:opacity-100" />
-                                <div className="relative flex items-center bg-[#111113] border border-white/10 rounded-xl overflow-hidden shadow-2xl">
-                                    <input
-                                        type="text"
-                                        placeholder="Enter Ticker (e.g. AAPL, NVDA, 腾讯)"
-                                        className="w-full bg-transparent border-none text-white px-6 py-5 text-lg outline-none placeholder:text-slate-500 uppercase font-mono"
-                                        value={ticker}
-                                        onChange={(e) => setTicker(e.target.value)}
-                                        disabled={isAnalyzing}
-                                    />
-                                    <div className="flex mr-3 gap-2">
-                                        {isAnalyzing ? (
-                                            <button
-                                                type="button"
-                                                onClick={handleStop}
-                                                className="bg-red-600/80 hover:bg-red-500 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
-                                            >
-                                                <XCircle className="w-5 h-5" />
-                                                Stop
-                                            </button>
-                                        ) : (
-                                            <button
-                                                type="submit"
-                                                disabled={!ticker}
-                                                className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
-                                            >
-                                                <PlayCircle className="w-5 h-5" />
-                                                Analyze
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            </form>
-
-                            {/* LLM Settings Panel */}
-                            <div className="bg-[#111113] border border-white/10 rounded-xl p-5 text-left text-sm flex flex-col gap-4 shadow-xl">
-                                <div className="flex items-center justify-between">
-                                    <span className="font-semibold text-slate-300">Model Configuration</span>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                        <label className="text-slate-500 text-xs uppercase tracking-wider">Provider</label>
-                                        <select
-                                            value={provider}
-                                            onChange={(e) => setProvider(e.target.value as "google" | "doubao")}
-                                            disabled={isAnalyzing}
-                                            className="w-full bg-[#1A1A1D] border border-white/5 rounded-lg px-3 py-2 text-white outline-none focus:border-blue-500/50"
+                    {/* Hero Search Bar - Centered */}
+                    <div className="max-w-3xl mx-auto mb-16 mt-10">
+                        <form onSubmit={handleAnalyze} className="relative group">
+                            <div className="absolute inset-0 bg-blue-500/20 rounded-xl blur-lg transition-opacity opacity-0 group-hover:opacity-100" />
+                            <div className="relative flex items-center bg-[#111113] border border-white/10 rounded-xl overflow-hidden shadow-2xl">
+                                <input
+                                    type="text"
+                                    placeholder={t('enterTicker')}
+                                    className="w-full bg-transparent border-none text-white px-6 py-5 text-lg outline-none placeholder:text-slate-500 uppercase font-mono"
+                                    value={ticker}
+                                    onChange={(e) => setTicker(e.target.value)}
+                                    disabled={isAnalyzing}
+                                />
+                                <div className="flex mr-3 gap-2">
+                                    {isAnalyzing ? (
+                                        <button
+                                            type="button"
+                                            onClick={handleStop}
+                                            className="bg-red-600/80 hover:bg-red-500 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
                                         >
-                                            <option value="google">Google Gemini</option>
-                                            <option value="doubao">Volcengine Doubao</option>
-                                        </select>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-slate-500 text-xs uppercase tracking-wider">Model / Endpoint ID</label>
-                                        <input
-                                            type="text"
-                                            value={model}
-                                            onChange={(e) => setModel(e.target.value)}
-                                            disabled={isAnalyzing}
-                                            className="w-full bg-[#1A1A1D] border border-white/5 rounded-lg px-3 py-2 text-white outline-none focus:border-blue-500/50 font-mono"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="space-y-1">
-                                    <label className="text-slate-500 text-xs uppercase tracking-wider">API Key (Optional, overrides .env)</label>
-                                    <input
-                                        type="password"
-                                        value={apiKey}
-                                        onChange={(e) => setApiKey(e.target.value)}
-                                        disabled={isAnalyzing}
-                                        placeholder={provider === "google" ? "AIzaSy..." : "Your Doubao API Key"}
-                                        className="w-full bg-[#1A1A1D] border border-white/5 rounded-lg px-3 py-2 text-white outline-none focus:border-blue-500/50 font-mono"
-                                    />
+                                            <XCircle className="w-5 h-5" />
+                                            {t('stopBtn')}
+                                        </button>
+                                    ) : (
+                                        <button
+                                            type="submit"
+                                            disabled={!ticker}
+                                            className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+                                        >
+                                            <PlayCircle className="w-5 h-5" />
+                                            {t('analyzeBtn')}
+                                        </button>
+                                    )}
                                 </div>
                             </div>
+                        </form>
+                    </div>
+                </div>
 
-                        </div>
+                {/* 2-Column Grid Layout */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 max-w-7xl mx-auto text-left">
 
+                    {/* Left Column (Terminal & History) - 4 Cols */}
+                    <div className="lg:col-span-4 flex flex-col gap-6">
                         {/* Right Column: History Panel */}
                         <div className="bg-[#111113] border border-white/10 rounded-2xl flex flex-col h-[280px]">
                             <div className="p-4 border-b border-white/10 flex items-center justify-between shrink-0">
-                                <h3 className="text-sm font-semibold text-slate-300 px-1">Recent Analyses</h3>
+                                <h3 className="text-sm font-semibold text-slate-300 px-1">{t('recentAnalyses')}</h3>
                                 {history.length > 0 && (
                                     <button
                                         onClick={() => {
@@ -466,7 +416,7 @@ export default function AnalysisPage() {
                                         }}
                                         className="text-xs text-slate-500 hover:text-red-400 transition-colors"
                                     >
-                                        Clear History
+                                        {t('clearHistory')}
                                     </button>
                                 )}
                             </div>
@@ -476,7 +426,7 @@ export default function AnalysisPage() {
                                         <div className="w-10 h-10 rounded-full border border-dashed border-white/10 mb-2 flex items-center justify-center">
                                             <Activity className="w-4 h-4 opacity-50" />
                                         </div>
-                                        No past analyses yet.
+                                        {t('noPastAnalyses')}
                                     </div>
                                 ) : (
                                     history.map((item) => (
@@ -506,26 +456,26 @@ export default function AnalysisPage() {
                                 )}
                             </div>
                         </div>
-
                     </div>
 
-                    {/* Content Area */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Right Column (Agent Terminal & Execution) - 8 Cols */}
+                    <div className="lg:col-span-8 flex flex-col gap-6">
+
 
                         {/* Agent Stream Terminal */}
-                        <div className="lg:col-span-1 rounded-2xl bg-[#111113] border border-white/10 flex flex-col h-[600px] overflow-hidden shadow-xl">
+                        <div className="rounded-2xl bg-[#111113] border border-white/10 flex flex-col h-[600px] overflow-hidden shadow-xl">
                             <div className="flex items-center gap-3 px-5 py-4 border-b border-white/5 bg-[#1A1A1D]">
                                 <div className="w-3 h-3 rounded-full bg-red-500" />
                                 <div className="w-3 h-3 rounded-full bg-yellow-500" />
                                 <div className="w-3 h-3 rounded-full bg-green-500" />
-                                <span className="ml-2 text-sm text-slate-400 font-mono">agent-terminal ~ zsh</span>
+                                <span className="ml-2 text-sm text-slate-400 font-mono">{t('agentTerminal')}</span>
                             </div>
 
                             <div className="flex-1 p-5 overflow-y-auto font-mono text-sm space-y-4 scrollbar-thin scrollbar-thumb-white/10">
                                 <AnimatePresence>
                                     {messages.length === 0 && !isAnalyzing && (
                                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-slate-500 italic">
-                                            Waiting for input...
+                                            {t('waitingForInput')}
                                         </motion.div>
                                     )}
                                     {messages.map((msg, idx) => (
@@ -552,7 +502,7 @@ export default function AnalysisPage() {
                                                         </div>
                                                     ) : (
                                                         <div className="text-slate-500 mt-1 italic">
-                                                            (Processing...)
+                                                            {t('processing')}
                                                         </div>
                                                     )}
                                                 </div>
@@ -570,7 +520,7 @@ export default function AnalysisPage() {
                         </div>
 
                         {/* Results Grid */}
-                        <div className="lg:col-span-2 flex flex-col gap-6">
+                        <div className="flex flex-col gap-6">
 
                             {/* Status Overview Card */}
                             <div className="rounded-2xl bg-gradient-to-br from-[#111113] to-[#151518] border border-white/10 p-8 shadow-xl relative overflow-hidden">
@@ -579,15 +529,15 @@ export default function AnalysisPage() {
                                     <div>
                                         <h3 className="text-xl font-semibold text-white flex items-center gap-2">
                                             <Activity className="w-6 h-6 text-blue-400" />
-                                            Live Execution Status
+                                            {t('liveExecutionStatus')}
                                         </h3>
                                         <p className="text-slate-400 mt-2 text-sm">
-                                            Watch the agents debate and form an investment plan.
+                                            {t('watchAgentsDebate')}
                                         </p>
                                     </div>
 
-                                    <div className={`px - 4 py - 2 rounded - full text - sm font - semibold border ${isAnalyzing ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'bg-green-500/10 text-green-500 border-green-500/20'} `}>
-                                        {isAnalyzing ? "Analysis in Progress..." : "Ready"}
+                                    <div className={`px-4 py-2 rounded-full text-sm font-semibold border ${isAnalyzing ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'bg-green-500/10 text-green-500 border-green-500/20'} `}>
+                                        {isAnalyzing ? t('analysisInProgress') : t('ready')}
                                     </div>
                                 </div>
 
@@ -599,7 +549,7 @@ export default function AnalysisPage() {
                                             <Cpu className="w-8 h-8 text-indigo-400 relative z-10" />
                                         </div>
                                         <div>
-                                            <div className="text-sm font-medium text-indigo-400 uppercase tracking-wider">Active Agent</div>
+                                            <div className="text-sm font-medium text-indigo-400 uppercase tracking-wider">{t('activeAgent')}</div>
                                             <div className="text-lg text-white font-semibold">{activeNode}</div>
                                         </div>
                                     </div>
@@ -614,7 +564,7 @@ export default function AnalysisPage() {
                                         >
                                             <div className="flex items-center gap-2">
                                                 <BrainCircuit className="w-5 h-5 text-purple-400" />
-                                                <span className="font-semibold text-slate-200">Live Agent Thoughts</span>
+                                                <span className="font-semibold text-slate-200">{t('liveAgentThoughts')}</span>
                                                 {isAnalyzing && (
                                                     <span className="flex h-2 w-2 relative ml-2">
                                                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
@@ -651,13 +601,13 @@ export default function AnalysisPage() {
                                                                     </div>
                                                                 ) : (
                                                                     <div className="text-slate-500 italic">
-                                                                        (Processing...)
+                                                                        {t('processing')}
                                                                     </div>
                                                                 )}
                                                             </div>
                                                         ))}
                                                         {messages.filter(m => m.type === "update").length === 0 && (
-                                                            <div className="text-slate-500 italic text-center py-4">Waiting for agent to produce analytical thoughts...</div>
+                                                            <div className="text-slate-500 italic text-center py-4">{t('waitingForThoughts')}</div>
                                                         )}
                                                         <div ref={thoughtsEndRef} />
                                                     </div >
@@ -677,7 +627,7 @@ export default function AnalysisPage() {
                                     <div className="flex items-center justify-between mb-6">
                                         <h3 className="text-2xl text-white font-bold flex items-center gap-3">
                                             <ShieldAlert className="w-7 h-7 text-blue-500" />
-                                            Final Trading Plan
+                                            {t('finalTradingPlan')}
                                         </h3>
                                         <button
                                             onClick={handleDownloadPDF}
@@ -689,7 +639,7 @@ export default function AnalysisPage() {
                                             ) : (
                                                 <Download className="w-4 h-4" />
                                             )}
-                                            {isExportingPDF ? "Exporting..." : "Download PDF"}
+                                            {isExportingPDF ? t('exporting') : t('downloadPdf')}
                                         </button>
                                     </div>
                                     <div ref={pdfContentRef} className="prose prose-invert prose-blue max-w-none text-slate-300">
@@ -702,7 +652,7 @@ export default function AnalysisPage() {
 
                             {!finalDecision && !isAnalyzing && messages.length > 0 && (
                                 <div className="flex-1 rounded-2xl border border-dashed border-white/20 flex items-center justify-center text-slate-500 min-h-[300px]">
-                                    Analysis result will appear here.
+                                    {t('analysisResultWillAppearHere')}
                                 </div>
                             )}
                         </div>

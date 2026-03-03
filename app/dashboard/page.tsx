@@ -6,7 +6,6 @@ import TransactionModal from '@/app/components/TransactionModal';
 import { useLanguage } from '@/components/LanguageProvider';
 
 // Components
-import TopBar from '@/components/TopBar';
 import PortfolioMainChart from '@/components/PortfolioMainChart';
 import MarketFlowWidget from '@/components/MarketFlowWidget';
 import NewsFeedWidget from '@/components/NewsFeedWidget';
@@ -104,37 +103,13 @@ export default function Dashboard() {
     if (loading) return null; // Or a skeleton
 
     return (
-        <div className="flex flex-col w-full min-h-screen bg-[var(--bg-app)]">
-            <TopBar />
-
+        <div className="flex flex-col w-full min-h-[calc(100vh-64px)] bg-[var(--bg-app)]">
             <main className="p-4 md:p-6 overflow-y-auto">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4 auto-rows-min">
 
-                    {/* --- ROW 1: Portfolio Chart (Large) + Stats --- */}
-
-                    {/* Chart Area: Spans 8 cols */}
-                    <div className="md:col-span-8 flex flex-col h-[400px]">
-                        <PortfolioMainChart data={chartData} />
-                    </div>
-
-                    {/* Quick Stats: Spans 4 cols - Stacked Cards */}
-                    <div className="md:col-span-4 flex flex-col gap-4 h-[400px]">
-
-                        {/* Equity Card */}
-                        <div className="flex-1 bg-[var(--bg-panel)] rounded-xl border border-[var(--border-subtle)] p-6 flex flex-col justify-center">
-                            <span className="text-[var(--text-secondary)] text-sm font-medium uppercase tracking-wider">{t('totalEquity')}</span>
-                            <div className="text-4xl font-bold text-white mt-2 font-mono">
-                                {stats ? `$${stats.totalEquity.toLocaleString()}` : '$0.00'}
-                            </div>
-                            <div className={`mt-2 text-sm font-medium ${stats?.totalPL && stats.totalPL >= 0 ? 'text-[var(--color-success-text)]' : 'text-[var(--color-danger-text)]'}`}>
-                                {stats?.totalPL && stats.totalPL >= 0 ? '▲' : '▼'} {stats ? `$${Math.abs(stats.totalPL).toLocaleString()}` : '0.00'} {t('allTime')}
-                            </div>
-                        </div>
-
-                        {/* Market Sentiment / News Widget */}
-                        <div className="flex-[2] overflow-hidden">
-                            <NewsFeedWidget />
-                        </div>
+                    {/* --- ROW 1: Market News --- */}
+                    <div className="md:col-span-12 h-[400px] bg-[var(--bg-panel)] rounded-xl border border-[var(--border-subtle)] overflow-hidden">
+                        <NewsFeedWidget />
                     </div>
 
                     {/* --- ROW 2: Market Data Grid (4 Cols x 3) --- */}
