@@ -43,40 +43,32 @@ const cleanContent = (raw: any): string => {
 
     let text = typeof raw === 'string' ? raw : JSON.stringify(raw);
 
-    // Case 2: Python list repr like "[{'type': 'text', 'text': '...', 'extras': {...}}]"
-    // Try to extract all 'text' values from the content blocks
-    if (text.trimStart().startsWith('[') && text.includes("'type'") && text.includes("'text'")) {
-        try {
-            // Replace Python single-quotes with double-quotes and Python True/False/None
-            const jsonified = text
-                .replace(/'/g, '"')
-                .replace(/\bTrue\b/g, 'true')
-                .replace(/\bFalse\b/g, 'false')
-                .replace(/\bNone\b/g, 'null');
-            const parsed = JSON.parse(jsonified);
-            if (Array.isArray(parsed)) {
-                text = parsed
-                    .filter((b: any) => b.type === 'text' && typeof b.text === 'string')
-                    .map((b: any) => b.text)
-                    .join('\n');
+    // Python list repr like "[{'type': 'text', 'text': '...', 'extras': {...}}]"
+    if (text.trimStart().startsWith('[') && text.includes("'text'")) {
+        const textPrefix = "'text': '";
+        const startOfText = text.indexOf(textPrefix);
+
+        if (startOfText !== -1) {
+            const possibleEndings = ["', 'type':", "', 'extras':", "'}]"];
+            let endOfText = -1;
+            for (const ending of possibleEndings) {
+                const idx = text.lastIndexOf(ending);
+                if (idx !== -1 && idx > endOfText) {
+                    endOfText = idx;
+                }
             }
-        } catch (e) {
-            // If JSON.parse fails (e.g. the text field itself has quotes),
-            // fall back to a regex extraction
-            const matches = text.matchAll(/"text":\s*"([\s\S]*?)(?:(?<!\\)",|(?<!\\)"}\s*])/g);
-            const parts: string[] = [];
-            for (const m of matches) {
-                parts.push(m[1]);
+            if (endOfText !== -1) {
+                text = text.substring(startOfText + textPrefix.length, endOfText);
             }
-            if (parts.length > 0) text = parts.join('\n');
         }
     }
 
-    // Case 3: Convert literal escape sequences to real characters
+    // Convert literal escape sequences to real characters properly
     text = text
-        .replace(/\\n\\n/g, '\n\n')
         .replace(/\\n/g, '\n')
-        .replace(/\\t/g, '\t');
+        .replace(/\\t/g, '\t')
+        .replace(/\\'/g, "'")
+        .replace(/\\"/g, '"');
 
     return text.trim();
 };
