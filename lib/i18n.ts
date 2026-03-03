@@ -114,7 +114,16 @@ export const translations = {
         finalTradingPlan: "Final Trading Plan",
         exporting: "Exporting...",
         downloadPdf: "Download PDF",
-        analysisResultWillAppearHere: "Analysis result will appear here."
+        analysisResultWillAppearHere: "Analysis result will appear here.",
+        statusMarketData: "Gathering market data and latest prices...",
+        statusFundamentals: "Analyzing financial statements and company fundamentals...",
+        statusSentiment: "Evaluating market sentiment and recent news...",
+        statusTechnical: "Computing technical indicators and chart patterns...",
+        statusRisk: "Assessing potential risks and sizing constraints...",
+        statusPortfolio: "Synthesizing all analysis into a final trading plan...",
+        statusProcessing: "Processing and analyzing data for optimal insights...",
+        analyzingLabel: "Analyzing ",
+        generatingReport: "Generating Report..."
     },
     zh: {
         // Layout
@@ -229,6 +238,15 @@ export const translations = {
         finalTradingPlan: "最终交易计划",
         exporting: "正在导出...",
         downloadPdf: "下载 PDF",
-        analysisResultWillAppearHere: "分析结果将显示在这里。"
+        analysisResultWillAppearHere: "分析结果将显示在这里。",
+        statusMarketData: "正在收集市场数据和最新价格...",
+        statusFundamentals: "正在分析财务报表和公司基本面...",
+        statusSentiment: "正在评估市场情绪和近期新闻...",
+        statusTechnical: "正在计算技术指标和图表形态...",
+        statusRisk: "正在评估潜在风险和头寸限制...",
+        statusPortfolio: "正在将所有分析综合成最终交易计划...",
+        statusProcessing: "正在处理分析数据以获取最佳见解...",
+        analyzingLabel: "正在分析 ",
+        generatingReport: "正在生成报告..."
     }
 };

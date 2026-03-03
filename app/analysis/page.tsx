@@ -29,6 +29,18 @@ export interface AnalysisHistoryItem {
     status: 'running' | 'completed' | 'error';
 }
 
+const getUserFriendlyStatus = (node: string | null, t: any) => {
+    switch(node) {
+        case "market_data_analyst": return t("statusMarketData");
+        case "fundamentals_analyst": return t("statusFundamentals");
+        case "sentiment_analyst": return t("statusSentiment");
+        case "technical_analyst": return t("statusTechnical");
+        case "risk_manager": return t("statusRisk");
+        case "portfolio_manager": return t("statusPortfolio");
+        default: return t("statusProcessing");
+    }
+}
+
 export default function AnalysisPage() {
     const { t } = useLanguage();
     const [ticker, setTicker] = useState("");
@@ -402,10 +414,10 @@ export default function AnalysisPage() {
                 {/* 2-Column Grid Layout */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 max-w-7xl mx-auto text-left">
 
-                    {/* Left Column (Terminal & History) - 4 Cols */}
-                    <div className="lg:col-span-4 flex flex-col gap-6">
+                    {/* Left Column (History) - 4 Cols */}
+                    <div className="lg:col-span-4 flex flex-col gap-6 relative">
                         {/* Left Column: History Panel */}
-                        <div className="bg-[#111113] border border-white/10 rounded-2xl flex flex-col h-[600px] shadow-xl">
+                        <div className="bg-[#111113] border border-white/10 rounded-2xl flex flex-col max-h-[calc(100vh-200px)] sticky top-6 shadow-xl w-full">
                             <div className="p-4 border-b border-white/10 flex items-center justify-between shrink-0">
                                 <h3 className="text-sm font-semibold text-slate-300 px-1">{t('recentAnalyses')}</h3>
                                 {history.length > 0 && (
@@ -458,210 +470,72 @@ export default function AnalysisPage() {
                         </div>
                     </div>
 
-                    {/* Right Column (Agent Terminal & Execution) - 8 Cols */}
+                    {/* Right Column (Analysis Results) */}
                     <div className="lg:col-span-8 flex flex-col gap-6">
 
-
-                        {/* Agent Stream Terminal */}
-                        <div className="rounded-2xl bg-[#111113] border border-white/10 flex flex-col h-[600px] overflow-hidden shadow-xl">
-                            <div className="flex items-center gap-3 px-5 py-4 border-b border-white/5 bg-[#1A1A1D]">
-                                <div className="w-3 h-3 rounded-full bg-red-500" />
-                                <div className="w-3 h-3 rounded-full bg-yellow-500" />
-                                <div className="w-3 h-3 rounded-full bg-green-500" />
-                                <span className="ml-2 text-sm text-slate-400 font-mono">{t('agentTerminal')}</span>
-                            </div>
-
-                            <div className="flex-1 p-5 overflow-y-auto font-mono text-sm space-y-4 scrollbar-thin scrollbar-thumb-white/10">
-                                <AnimatePresence>
-                                    {messages.length === 0 && !isAnalyzing && (
-                                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center h-full text-slate-500 italic pb-12">
-                                            <div className="text-blue-500/30 mb-4 animate-pulse">
-                                                <BrainCircuit className="w-12 h-12" />
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-slate-600 font-bold">~ </span>
-                                                {t('waitingForInput')}
-                                                <span className="inline-block w-2 h-4 bg-blue-500/50 animate-pulse ml-1" />
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                    {messages.map((msg, idx) => (
-                                        <motion.div
-                                            key={idx}
-                                            initial={{ opacity: 0, x: -10 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            className="flex flex-col gap-1"
-                                        >
-                                            {msg.type === "status" && <span className="text-blue-400">➜ {msg.message}</span>}
-                                            {msg.type === "done" && <span className="text-green-400">➜ {msg.message}</span>}
-                                            {msg.type === "error" && <span className="text-red-400">➜ Error: {msg.message}</span>}
-
-                                            {msg.type === "update" && (
-                                                <div className="pl-4 border-l-2 border-white/5 py-1">
-                                                    <span className="text-indigo-400 font-bold">[{msg.node}]</span>
-                                                    {msg.tool_calls && msg.tool_calls.length > 0 ? (
-                                                        <div className="text-slate-400 mt-1">
-                                                            Calling tool: <span className="text-yellow-400/80">{msg.tool_calls[0].name}</span>()
-                                                        </div>
-                                                    ) : msg.content ? (
-                                                        <div className="text-slate-300 mt-1 whitespace-pre-wrap">
-                                                            {msg.content.substring(0, 150)}{msg.content.length > 150 ? "..." : ""}
-                                                        </div>
-                                                    ) : (
-                                                        <div className="text-slate-500 mt-1 italic">
-                                                            {t('processing')}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </motion.div>
-                                    ))}
-                                </AnimatePresence>
-                                {isAnalyzing && (
-                                    <div className="flex items-center gap-2 text-blue-400 opacity-70">
-                                        <span className="animate-pulse">_</span>
-                                    </div>
-                                )}
-                                <div ref={terminalEndRef} />
-                            </div>
-                        </div>
-
-                        {/* Results Grid */}
-                        <div className="flex flex-col gap-6">
-
-                            {/* Status Overview Card */}
-                            <div className="rounded-2xl bg-gradient-to-br from-[#111113] to-[#151518] border border-white/10 p-8 shadow-xl relative overflow-hidden">
-                                <div className="absolute inset-0 bg-blue-500/5" />
-                                <div className="relative flex justify-between items-start">
-                                    <div>
-                                        <h3 className="text-xl font-semibold text-white flex items-center gap-2">
-                                            <Activity className="w-6 h-6 text-blue-400" />
-                                            {t('liveExecutionStatus')}
-                                        </h3>
-                                        <p className="text-slate-400 mt-2 text-sm">
-                                            {t('watchAgentsDebate')}
-                                        </p>
-                                    </div>
-
-                                    <div className={`px-4 py-2 rounded-full text-sm font-semibold border ${isAnalyzing ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'bg-green-500/10 text-green-500 border-green-500/20'} `}>
-                                        {isAnalyzing ? t('analysisInProgress') : t('ready')}
-                                    </div>
+                        {/* Elegant Progress/Loading State */}
+                        {isAnalyzing && !finalDecision && (
+                            <div className="rounded-2xl bg-[#111113] border border-blue-500/20 p-12 shadow-xl shadow-blue-900/10 flex flex-col items-center justify-center min-h-[400px]">
+                                <div className="relative mb-8">
+                                   <div className="absolute inset-0 bg-blue-500/20 rounded-full blur-xl animate-pulse" />
+                                   <BrainCircuit className="w-16 h-16 text-blue-400 relative z-10 animate-bounce" />
                                 </div>
-
-                                {/* Active Agent Pulse */}
-                                {activeNode && isAnalyzing && (
-                                    <div className="mt-8 flex items-center gap-4 p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
-                                        <div className="relative">
-                                            <div className="absolute inset-0 bg-indigo-500/30 rounded-full animate-ping" />
-                                            <Cpu className="w-8 h-8 text-indigo-400 relative z-10" />
-                                        </div>
-                                        <div>
-                                            <div className="text-sm font-medium text-indigo-400 uppercase tracking-wider">{t('activeAgent')}</div>
-                                            <div className="text-lg text-white font-semibold">{activeNode}</div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Live Agent Thoughts (Collapsible) */}
-                                {messages.length > 0 && (
-                                    <div className="mt-8 border border-white/10 rounded-xl overflow-hidden bg-[#1A1A1D]">
-                                        <button
-                                            onClick={() => setShowThoughts(!showThoughts)}
-                                            className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors focus:outline-none"
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <BrainCircuit className="w-5 h-5 text-purple-400" />
-                                                <span className="font-semibold text-slate-200">{t('liveAgentThoughts')}</span>
-                                                {isAnalyzing && (
-                                                    <span className="flex h-2 w-2 relative ml-2">
-                                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
-                                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
-                                                    </span>
-                                                )}
-                                            </div>
-                                            {showThoughts ? <ChevronUp className="w-5 h-5 text-slate-500" /> : <ChevronDown className="w-5 h-5 text-slate-500" />}
-                                        </button>
-
-                                        <AnimatePresence>
-                                            {showThoughts && (
-                                                <motion.div
-                                                    initial={{ height: 0, opacity: 0 }}
-                                                    animate={{ height: "auto", opacity: 1 }}
-                                                    exit={{ height: 0, opacity: 0 }}
-                                                    className="border-t border-white/5"
-                                                >
-                                                    <div className="p-4 max-h-[400px] overflow-y-auto space-y-4 font-mono text-sm scrollbar-thin scrollbar-thumb-white/10">
-                                                        {messages.filter(m => m.type === "update").map((msg, idx) => (
-                                                            <div key={idx} className="bg-[#111113] p-3 rounded-lg border border-white/5">
-                                                                <div className="flex items-center gap-2 mb-2">
-                                                                    <span className="bg-indigo-500/20 text-indigo-300 text-xs px-2 py-0.5 rounded">
-                                                                        {msg.node}
-                                                                    </span>
-                                                                </div>
-                                                                {msg.tool_calls && msg.tool_calls.length > 0 ? (
-                                                                    <div className="text-yellow-400/90 text-xs">
-                                                                        &gt; Executing tool: <span className="font-semibold">{msg.tool_calls[0].name}</span>(...)
-                                                                    </div>
-                                                                ) : msg.content ? (
-                                                                    <div className="text-slate-300 whitespace-pre-wrap leading-relaxed opacity-90">
-                                                                        {msg.content}
-                                                                    </div>
-                                                                ) : (
-                                                                    <div className="text-slate-500 italic">
-                                                                        {t('processing')}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        ))}
-                                                        {messages.filter(m => m.type === "update").length === 0 && (
-                                                            <div className="text-slate-500 italic text-center py-4">{t('waitingForThoughts')}</div>
-                                                        )}
-                                                        <div ref={thoughtsEndRef} />
-                                                    </div >
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Final Decision Area */}
-                            {finalDecision && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                                    className="lg:col-span-2 flex-1 rounded-2xl bg-[#111113] border border-blue-500/20 p-8 shadow-xl shadow-blue-900/10 flex flex-col"
-                                >
-                                    <div className="flex items-center justify-between mb-6">
-                                        <h3 className="text-2xl text-white font-bold flex items-center gap-3">
-                                            <ShieldAlert className="w-7 h-7 text-blue-500" />
-                                            {t('finalTradingPlan')}
-                                        </h3>
-                                        <button
-                                            onClick={handleDownloadPDF}
-                                            disabled={isExportingPDF}
-                                            className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-colors text-sm font-medium border border-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            {isExportingPDF ? (
-                                                <Loader2 className="w-4 h-4 animate-spin" />
-                                            ) : (
-                                                <Download className="w-4 h-4" />
-                                            )}
-                                            {isExportingPDF ? t('exporting') : t('downloadPdf')}
-                                        </button>
-                                    </div>
-                                    <div ref={pdfContentRef} className="prose prose-invert prose-blue max-w-none text-slate-300">
-                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                            {finalDecision}
-                                        </ReactMarkdown>
-                                    </div>
-                                </motion.div>
-                            )}
-
-                            {!finalDecision && !isAnalyzing && messages.length > 0 && (
-                                <div className="flex-1 rounded-2xl border border-dashed border-white/20 flex items-center justify-center text-slate-500 min-h-[300px]">
-                                    {t('analysisResultWillAppearHere')}
+                                <h3 className="text-2xl font-bold text-white mb-4">
+                                    {t("analyzingLabel")}{ticker}...
+                                </h3>
+                                <p className="text-slate-400 text-center max-w-md">
+                                    {getUserFriendlyStatus(activeNode, t)}
+                                </p>
+                                <div className="w-64 h-2 bg-slate-800 rounded-full mt-8 overflow-hidden relative">
+                                    <motion.div 
+                                        initial={{ x: "-100%" }}
+                                        animate={{ x: "200%" }}
+                                        transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                                        className="absolute top-0 bottom-0 left-0 w-1/2 bg-blue-500 rounded-full"
+                                    />
                                 </div>
-                            )}
+                            </div>
+                        )}
+
+                        {/* Final Decision Area */}
+                        {finalDecision && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                                className="flex-1 rounded-2xl bg-[#111113] border border-blue-500/20 p-8 shadow-xl shadow-blue-900/10 flex flex-col"
+                            >
+                                <div className="flex items-center justify-between mb-8 border-b border-white/10 pb-6">
+                                    <h3 className="text-2xl text-white font-bold flex items-center gap-3">
+                                        <ShieldAlert className="w-7 h-7 text-blue-500" />
+                                        {t("finalTradingPlan")}
+                                    </h3>
+                                    <button
+                                        onClick={handleDownloadPDF}
+                                        disabled={isExportingPDF}
+                                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/20 rounded-lg transition-all text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {isExportingPDF ? (
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                            <Download className="w-4 h-4" />
+                                        )}
+                                        {isExportingPDF ? t("exporting") : t("downloadPdf")}
+                                    </button>
+                                </div>
+                                <div ref={pdfContentRef} className="prose prose-invert prose-blue max-w-none text-slate-300">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                        {finalDecision}
+                                    </ReactMarkdown>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {/* Empty State */}
+                        {!finalDecision && !isAnalyzing && (
+                            <div className="flex-1 rounded-2xl border border-dashed border-white/10 bg-white/5 flex flex-col items-center justify-center text-slate-500 min-h-[400px]">
+                                 <Activity className="w-12 h-12 text-slate-600 mb-4 opacity-50" />
+                                 <p className="text-lg">{t("analysisResultWillAppearHere")}</p>
+                            </div>
+                        )}
                         </div>
                     </div>
                 </div>
