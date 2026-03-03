@@ -371,15 +371,15 @@ export default function AnalysisPage() {
                 <div className="flex flex-col items-center text-center max-w-3xl mx-auto mb-16">
                     <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-blue-600 font-semibold text-xs mb-6 shadow-sm">
                         <BrainCircuit className="w-3.5 h-3.5" />
-                        <span>Multi-Agent AI Analysis</span>
+                        {t("analysisHeroLabel")}
                     </div>
 
                     <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 mb-6 leading-tight">
-                        Institutional-Grade Stock Intelligence
+                        {t("analysisHeroTitle")}
                     </h1>
 
                     <p className="text-lg text-slate-500 max-w-2xl mx-auto mb-10 leading-relaxed font-medium">
-                        Four specialized AI agents — Technical, Fundamental, Macro, and Sentiment — debate every trade so you don't have to.
+                        {t("analysisHeroSubtitle")}
                     </p>
 
                     {/* Search Bar matching Figma */}
@@ -412,7 +412,7 @@ export default function AnalysisPage() {
                                     disabled={!ticker.trim()}
                                     className="px-6 py-3 bg-[#0066FF] text-white font-bold rounded-xl hover:bg-blue-700 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-blue-500/20"
                                 >
-                                    <span>Analyze Now</span>
+                                    {t("analyzeNowBtn")}
                                     <ArrowRight className="w-4 h-4" />
                                 </button>
                             )}
@@ -424,8 +424,8 @@ export default function AnalysisPage() {
                         <div className="flex flex-wrap items-center justify-center gap-8 mt-8 text-sm">
                             <div className="flex items-center gap-2">
                                 <span className="text-slate-400 font-medium mr-1 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Recent:</span>
-                                {["AAPL", "TSLA", "NVDA", "MSFT"].map(t => (
-                                    <button onClick={() => { setTicker(t); }} key={t} className="px-3 py-1 rounded-md bg-white border border-slate-200 text-slate-600 font-semibold hover:border-blue-300 hover:text-blue-600 transition-colors shadow-sm">{t}</button>
+                                {["AAPL", "TSLA", "NVDA", "MSFT"].map(tk => (
+                                    <button onClick={() => { setTicker(tk); }} key={tk} className="px-3 py-1 rounded-md bg-white border border-slate-200 text-slate-600 font-semibold hover:border-blue-300 hover:text-blue-600 transition-colors shadow-sm">{tk}</button>
                                 ))}
                             </div>
                             <div className="flex items-center gap-2">
@@ -444,22 +444,22 @@ export default function AnalysisPage() {
                             <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center mb-5">
                                 <BrainCircuit className="w-5 h-5 text-blue-600" />
                             </div>
-                            <h3 className="text-lg font-bold text-slate-900 mb-2">Multi-Agent Debate</h3>
-                            <p className="text-slate-500 text-sm leading-relaxed">4 specialized AI analysts debate every stock from all angles before reaching consensus.</p>
+                            <h3 className="text-lg font-bold text-slate-900 mb-2">{t("featureCard1Title")}</h3>
+                            <p className="text-slate-500 text-sm leading-relaxed">{t("featureCard1Desc")}</p>
                         </div>
                         <div className="bg-white rounded-[20px] p-6 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
                             <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center mb-5">
                                 <TrendingUp className="w-5 h-5 text-emerald-600" />
                             </div>
-                            <h3 className="text-lg font-bold text-slate-900 mb-2">Technical Analysis</h3>
-                            <p className="text-slate-500 text-sm leading-relaxed">Price action, momentum indicators, chart patterns and volume analysis.</p>
+                            <h3 className="text-lg font-bold text-slate-900 mb-2">{t("featureCard2Title")}</h3>
+                            <p className="text-slate-500 text-sm leading-relaxed">{t("featureCard2Desc")}</p>
                         </div>
                         <div className="bg-white rounded-[20px] p-6 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
                             <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center mb-5">
                                 <BarChart2 className="w-5 h-5 text-amber-600" />
                             </div>
-                            <h3 className="text-lg font-bold text-slate-900 mb-2">Fundamental Research</h3>
-                            <p className="text-slate-500 text-sm leading-relaxed">Earnings quality, balance sheet health, valuation multiples and competitive moat.</p>
+                            <h3 className="text-lg font-bold text-slate-900 mb-2">{t("featureCard3Title")}</h3>
+                            <p className="text-slate-500 text-sm leading-relaxed">{t("featureCard3Desc")}</p>
                         </div>
                     </div>
                 )}
@@ -537,7 +537,7 @@ export default function AnalysisPage() {
                                             className="absolute top-0 bottom-0 left-0 w-1/2 bg-[#0066FF] rounded-full shadow-md shadow-blue-500/50"
                                         />
                                     </div>
-                                    <p className="mt-6 text-xs text-slate-400 font-semibold tracking-wider uppercase">Live Execution Status</p>
+                                    <p className="mt-6 text-xs text-slate-400 font-semibold tracking-wider uppercase">{t("liveExecutionStatusBadge")}</p>
                                 </motion.div>
                             )}
 

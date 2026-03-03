@@ -123,7 +123,22 @@ export const translations = {
         statusPortfolio: "Synthesizing all analysis into a final trading plan...",
         statusProcessing: "Processing and analyzing data for optimal insights...",
         analyzingLabel: "Analyzing ",
-        generatingReport: "Generating Report..."
+        generatingReport: "Generating Report...",
+
+        // Analysis Page Hero (Figma redesign)
+        analysisHeroLabel: "Multi-Agent AI Analysis",
+        analysisHeroTitle: "Institutional-Grade Stock Intelligence",
+        analysisHeroSubtitle: "Four specialized AI agents — Technical, Fundamental, Macro, and Sentiment — debate every trade so you don't have to.",
+        analyzeNowBtn: "Analyze Now",
+        liveExecutionStatusBadge: "Live Execution Status",
+        recentLabel: "Recent:",
+        trendingLabel: "Trending:",
+        featureCard1Title: "Multi-Agent Debate",
+        featureCard1Desc: "4 specialized AI analysts debate every stock from all angles before reaching consensus.",
+        featureCard2Title: "Technical Analysis",
+        featureCard2Desc: "Price action, momentum indicators, chart patterns and volume analysis.",
+        featureCard3Title: "Fundamental Research",
+        featureCard3Desc: "Earnings quality, balance sheet health, valuation multiples and competitive moat."
     },
     zh: {
         // Layout
@@ -247,6 +262,21 @@ export const translations = {
         statusPortfolio: "正在将所有分析综合成最终交易计划...",
         statusProcessing: "正在处理分析数据以获取最佳见解...",
         analyzingLabel: "正在分析 ",
-        generatingReport: "正在生成报告..."
+        generatingReport: "正在生成报告...",
+
+        // Analysis Page Hero (Figma redesign)
+        analysisHeroLabel: "多智能体 AI 分析",
+        analysisHeroTitle: "机构级股票研究平台",
+        analysisHeroSubtitle: "四位专业 AI 分析师——技术面、基本面、宏观面和情绪面——替您辩论每一笔交易。",
+        analyzeNowBtn: "立即分析",
+        liveExecutionStatusBadge: "实时执行状态",
+        recentLabel: "最近：",
+        trendingLabel: "热门：",
+        featureCard1Title: "多智能体辩论",
+        featureCard1Desc: "4 位专业 AI 分析师从各个角度对每只股票展开辩论，最终达成共识。",
+        featureCard2Title: "技术分析",
+        featureCard2Desc: "价格走势、动量指标、图表形态和成交量分析。",
+        featureCard3Title: "基本面研究",
+        featureCard3Desc: "盈利质量、资产负债表健康状况、估值倍数和竞争护城河。"
     }
 };

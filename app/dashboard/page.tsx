@@ -107,12 +107,7 @@ export default function Dashboard() {
             <main className="p-4 md:p-6 overflow-y-auto">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-5 auto-rows-min">
 
-                    {/* --- ROW 1: Market News --- */}
-                    <div className="md:col-span-12 bg-white rounded-[20px] border border-slate-200 overflow-hidden shadow-sm">
-                        <NewsFeedWidget />
-                    </div>
-
-                    {/* --- ROW 2: Market Data Grid (4 Cols x 3) --- */}
+                    {/* --- ROW 1: Market Data Grid (4 Cols x 3) --- */}
 
                     {/* Macro Data: Col 3 */}
                     <div className="md:col-span-3 flex">
@@ -138,6 +133,11 @@ export default function Dashboard() {
                             title={t('blueChipsTech')}
                             items={marketData?.stocks?.slice(0, 5) || []}
                         />
+                    </div>
+
+                    {/* --- ROW 2: Market News --- */}
+                    <div className="md:col-span-12 bg-white rounded-[20px] border border-slate-200 overflow-hidden shadow-sm">
+                        <NewsFeedWidget />
                     </div>
 
                     {/* --- ROW 3: Holdings Table (Full Width, logged in only) --- */}
