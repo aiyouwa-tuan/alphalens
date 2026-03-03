@@ -53,8 +53,8 @@ export default function TopBar() {
         return (
             <Link href={href} className={clsx(
                 "flex flex-row items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200",
-                active 
-                    ? "bg-blue-50 text-blue-600 shadow-sm border border-blue-100/50" 
+                active
+                    ? "bg-blue-50 text-blue-600 shadow-sm border border-blue-100/50"
                     : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
             )}>
                 <Icon className={clsx("w-4 h-4", active ? "text-blue-600 stroke-[2.5]" : "text-slate-400")} />
@@ -80,19 +80,19 @@ export default function TopBar() {
 
             {/* Center: Navigation Pills */}
             <nav className="hidden md:flex flex-row items-center gap-2 bg-slate-50/50 p-1 rounded-full border border-slate-100">
-                <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" />
-                <NavItem href="/analysis" icon={Briefcase} label="Analysis" />
-                <NavItem href="/dashboard/news" icon={Globe} label="News" />
-                <NavItem href="#" icon={LineChart} label="Markets" />
+                <NavItem href="/dashboard" icon={LayoutDashboard} label={t('dashboard')} />
+                <NavItem href="/dashboard/news" icon={Globe} label={t('news')} />
+                <NavItem href="/analysis" icon={Briefcase} label={t('analytics')} />
+                <NavItem href="#" icon={LineChart} label={language === 'en' ? 'Markets' : '市场'} />
             </nav>
 
             {/* Right: Actions */}
             <div className="flex flex-row items-center gap-3 min-w-[200px] justify-end">
-                
+
                 {/* Market Status Pill */}
                 <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-full border border-slate-200/60 shadow-sm">
                     <LineChart className="w-4 h-4 text-slate-400" />
-                    <span className="text-sm font-medium text-slate-600">Market: Open</span>
+                    <span className="text-sm font-medium text-slate-600 whitespace-nowrap">{language === 'en' ? 'Market: Open' : '市场：开盘'}</span>
                     <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse ml-1 opacity-90"></div>
                 </div>
 

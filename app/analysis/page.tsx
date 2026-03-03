@@ -378,12 +378,12 @@ export default function AnalysisPage() {
                         {t("analysisHeroTitle")}
                     </h1>
 
-                    <p className="text-lg text-slate-500 max-w-2xl mx-auto mb-10 leading-relaxed font-medium">
+                    <p className="text-lg text-slate-500 max-w-3xl mx-auto mb-10 leading-relaxed font-medium whitespace-pre-line text-balance">
                         {t("analysisHeroSubtitle")}
                     </p>
 
                     {/* Search Bar matching Figma */}
-                    <div className="w-full max-w-2xl">
+                    <div className="w-full max-w-xl">
                         <form onSubmit={handleAnalyze} className="relative group flex items-center bg-white border border-slate-200 shadow-lg shadow-slate-200/50 rounded-2xl p-2 transition-all hover:shadow-xl hover:border-slate-300">
                             <div className="pl-4 pr-3 text-slate-400">
                                 <Search className="w-5 h-5" />
@@ -466,11 +466,11 @@ export default function AnalysisPage() {
 
                 {/* Grid Layout strictly for active analysis or results */}
                 {(isAnalyzing || finalDecision) && (
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-10">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6 max-w-6xl mx-auto">
 
                         {/* LEFT COLUMN: HISTORY / WATCHLIST */}
-                        <div className="lg:col-span-4 flex flex-col gap-6 relative">
-                            <div className="bg-white border border-slate-200 rounded-[20px] flex flex-col shadow-sm max-h-[calc(100vh-140px)] sticky top-24 w-full overflow-hidden">
+                        <div className="lg:col-span-3 flex flex-col gap-6 relative">
+                            <div className="bg-white border border-slate-200 rounded-[20px] flex flex-col shadow-sm sticky top-24 w-full overflow-hidden">
                                 <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white z-10">
                                     <h3 className="text-[15px] font-bold text-slate-800 flex items-center gap-2">
                                         <History className="w-4 h-4 text-slate-400" />
@@ -509,13 +509,13 @@ export default function AnalysisPage() {
                         </div>
 
                         {/* RIGHT COLUMN: MAIN RESULTS */}
-                        <div className="lg:col-span-8 flex flex-col gap-6">
+                        <div className="lg:col-span-9 flex flex-col gap-6">
 
                             {/* Elegant Progress/Loading State */}
                             {isAnalyzing && !finalDecision && (
                                 <motion.div
                                     initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                                    className="bg-white rounded-[24px] border border-blue-100 p-16 shadow-xl shadow-blue-500/5 flex flex-col items-center justify-center min-h-[500px]"
+                                    className="bg-white rounded-[24px] border border-blue-100 p-12 shadow-xl shadow-blue-500/5 flex flex-col items-center justify-center min-h-[420px]"
                                 >
                                     <div className="relative mb-8">
                                         <div className="absolute inset-0 bg-blue-100 rounded-2xl blur-xl animate-pulse" />
