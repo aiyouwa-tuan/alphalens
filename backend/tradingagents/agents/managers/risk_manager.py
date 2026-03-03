@@ -49,8 +49,44 @@ IMPORTANT: ALL your thoughts, responses, and reports MUST be written in Chinese 
 
         response = llm.invoke(prompt)
 
+        final_decision_text = response.content
+        
+        # Manually assemble the 30-page "Master PDF" by injecting all the raw, unabstracted analysts' data directly into the final payload.
+        # This completely bypasses the LLM's physical output token ceiling limiting it to ~5 pages.
+        full_expanded_report = f"""
+# AlphaLens Master Investment Committee Report: {company_name}
+
+{final_decision_text}
+
+---
+# 📚 Appendix 1: Raw Analyst Reports (Unabridged)
+This section contains the exact, unsummarized, multi-page data gathered by our autonomous analyst team. Nothing has been abstracted.
+
+## 📊 Market & Technical Analysis
+{market_research_report}
+
+## 🏢 Fundamental Data
+{fundamentals_report}
+
+## 📰 Global & Company News
+{news_report}
+
+## 📱 Social Media Sentiment
+{sentiment_report}
+
+---
+# 🗣️ Appendix 2: The Raw Debate Transcript
+This section contains the verbatim, unedited transcript of the AI committee debating the merits and risks of the trade, exposing all nuances.
+
+## 🐂🐻 Bull vs Bear Committee Debate
+{state.get("investment_debate_state", {}).get("history", "No debate history.")}
+
+## ⚖️ Risk Management Committee Debate
+{state.get("risk_debate_state", {}).get("history", "No debate history.")}
+"""
+
         new_risk_debate_state = {
-            "judge_decision": response.content,
+            "judge_decision": final_decision_text,
             "history": risk_debate_state["history"],
             "aggressive_history": risk_debate_state["aggressive_history"],
             "conservative_history": risk_debate_state["conservative_history"],
@@ -64,7 +100,7 @@ IMPORTANT: ALL your thoughts, responses, and reports MUST be written in Chinese 
 
         return {
             "risk_debate_state": new_risk_debate_state,
-            "final_trade_decision": response.content,
+            "final_trade_decision": full_expanded_report,
         }
 
     return risk_manager_node
