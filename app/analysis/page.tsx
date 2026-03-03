@@ -43,29 +43,94 @@ const cleanContent = (raw: any): string => {
 
     let text = typeof raw === 'string' ? raw : JSON.stringify(raw);
 
-    // Remove Python List repr wrappers around Anthropic ContentBlocks
-    // This safely strips the `[{'type': 'text', 'text': '` prefix and trailing keys
-    text = text.replace(/\[\s*\{\s*'type'\s*:\s*'text'\s*,\s*'text'\s*:\s*'/g, '');
-
-    // Safely strip the suffix like `', 'extras': {...}}]` or `'}]`
-    // Matches the closing `'` of the text field optionally followed by other keys until `}]`
-    text = text.replace(/',\s*'extras'\s*:[^\]]*\}\s*\]/g, '');
-    text = text.replace(/',\s*'cache_control'\s*:[^\]]*\}\s*\]/g, '');
-    text = text.replace(/',\s*'[^']+'\s*:[^\]]*\}\s*\]/g, ''); // catch-all for other ending keys
-    text = text.replace(/'\s*\}\s*\]/g, '');
-
-    // Cleanup bare array markers if an empty array was sent (e.g. `[]` from other components like market data)
-    if (text === '[]') text = '';
-    text = text.replace(/^\[\]$/g, '');
-
-    // Convert literal escape sequences to real characters properly
+    // Convert literal escape sequences to real characters properly right away
     text = text
         .replace(/\\n/g, '\n')
         .replace(/\\t/g, '\t')
         .replace(/\\'/g, "'")
         .replace(/\\"/g, '"');
 
-    return text.trim();
+    // Often the Python list string representation creates strings like:
+    // "Neutral Analyst: [{'type': 'text', 'text': 'HERE IS TEXT', 'extras': ...}]"
+    // To handle multiple blocks properly without regex mismatches over newlines, we parse it manually.
+    let result = "";
+
+    // Look for occurrences of `[{` and `text': '`
+    const arrayStartPattern = "[{";
+    const textKeyPattern1 = "'text': '";
+    const textKeyPattern2 = "'text': \"";
+
+    let currentIndex = 0;
+    while (currentIndex < text.length) {
+        let blockStartIndex = text.indexOf(arrayStartPattern, currentIndex);
+        if (blockStartIndex === -1) {
+            // No more arrays, append the rest
+            result += text.substring(currentIndex);
+            break;
+        }
+
+        // Append prefix (like "Neutral Analyst: ")
+        result += text.substring(currentIndex, blockStartIndex);
+
+        let singleQuoteIndex = text.indexOf(textKeyPattern1, blockStartIndex);
+        let doubleQuoteIndex = text.indexOf(textKeyPattern2, blockStartIndex);
+
+        let textValStart = -1;
+        let quoteType = '';
+
+        if (singleQuoteIndex !== -1 && (doubleQuoteIndex === -1 || singleQuoteIndex < doubleQuoteIndex)) {
+            textValStart = singleQuoteIndex + textKeyPattern1.length;
+            quoteType = "'";
+        } else if (doubleQuoteIndex !== -1) {
+            textValStart = doubleQuoteIndex + textKeyPattern2.length;
+            quoteType = '"';
+        }
+
+        if (textValStart === -1) {
+            // Broken format or empty array `[]`
+            // Just skip past it
+            let arrayEndIndex = text.indexOf("]", blockStartIndex);
+            if (arrayEndIndex !== -1) {
+                currentIndex = arrayEndIndex + 1;
+                continue;
+            } else {
+                result += text.substring(blockStartIndex);
+                break;
+            }
+        }
+
+        // Find the END of the text content safely
+        // It ends at `, 'extras':` or `}]`
+        let endIdx1 = text.indexOf("', '", textValStart);
+        let endIdx1_2 = text.indexOf("\", '", textValStart);
+        let endIdx1_3 = text.indexOf("', \"", textValStart);
+        let endIdx1_4 = text.indexOf("\", \"", textValStart);
+        let endIdx2 = text.indexOf("'}]", textValStart);
+        let endIdx2_2 = text.indexOf("\"}]", textValStart);
+        let endIdx3 = text.indexOf("'},", textValStart);
+        let endIdx3_2 = text.indexOf("\"},", textValStart);
+
+        let possibleEnds = [endIdx1, endIdx1_2, endIdx1_3, endIdx1_4, endIdx2, endIdx2_2, endIdx3, endIdx3_2].filter(idx => idx !== -1);
+
+        if (possibleEnds.length > 0) {
+            let actualEndIdx = Math.min(...possibleEnds);
+            result += text.substring(textValStart, actualEndIdx);
+
+            // Fast forward past the end of this array
+            let arrayEndIndex = text.indexOf("]", actualEndIdx);
+            if (arrayEndIndex !== -1) {
+                currentIndex = arrayEndIndex + 1;
+            } else {
+                currentIndex = actualEndIdx;
+            }
+        } else {
+            // Fallback if no matching end found
+            result += text.substring(textValStart);
+            break;
+        }
+    }
+
+    return result.trim();
 };
 const getUserFriendlyStatus = (node: string | null, t: any) => {
 
