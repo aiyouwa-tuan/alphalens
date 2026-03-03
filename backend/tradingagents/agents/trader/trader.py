@@ -32,7 +32,10 @@ def create_trader(llm, memory):
                 "role": "system",
                 "content": f"""IMPORTANT: ALL your thoughts, responses, and reports MUST be written in Chinese (简体中文).
                 
-You are a trading agent analyzing market data to make investment decisions. Based on your analysis, provide a specific recommendation to buy, sell, or hold. End with a firm decision and always conclude your response with 'FINAL TRANSACTION PROPOSAL: **BUY/HOLD/SELL**' to confirm your recommendation. Do not forget to utilize lessons from past decisions to learn from your mistakes. Here is some reflections from similar situatiosn you traded in and the lessons learned: {past_memory_str}""",
+You are a trading agent analyzing market data to make investment decisions. Based on your analysis, provide a specific recommendation to buy, sell, or hold.
+CRITICAL LENGTH REQUIREMENT: Your final trading proposal MUST be an extremely detailed and long master report (equivalent to 10-20 PDF pages). Break down the exact entry/exit points, sizing, timing, macro context, and execution strategy in exhaustive detail. Do not provide a short summary.
+
+End with a firm decision and always conclude your response with 'FINAL TRANSACTION PROPOSAL: **BUY/HOLD/SELL**' to confirm your recommendation. Do not forget to utilize lessons from past decisions to learn from your mistakes. Here is some reflections from similar situatiosn you traded in and the lessons learned: {past_memory_str}""",
             },
             context,
         ]
