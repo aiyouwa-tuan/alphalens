@@ -36,13 +36,13 @@ export default function MarketFlowWidget({ title, items, isLoading }: MarketFlow
     }
 
     return (
-        <div className="bg-[var(--bg-panel)] rounded-lg border border-[var(--border-subtle)] overflow-hidden flex flex-col h-full">
+        <div className="w-full bg-[var(--bg-panel)] rounded-lg border border-[var(--border-subtle)] flex flex-col h-full">
             <div className="px-4 py-3 border-b border-[var(--border-subtle)] flex justify-between items-center">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">{title}</h3>
                 <span className="text-[10px] text-[var(--text-muted)]">{t('realTime')}</span>
             </div>
 
-            <div className="flex-1 overflow-auto">
+            <div className="flex-1">
                 <table className="w-full text-sm">
                     <tbody>
                         {items.map((item) => (

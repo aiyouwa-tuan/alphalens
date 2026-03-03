@@ -115,12 +115,12 @@ export default function Dashboard() {
                     {/* --- ROW 2: Market Data Grid (4 Cols x 3) --- */}
 
                     {/* Macro Data: Col 3 */}
-                    <div className="md:col-span-3 h-[300px]">
+                    <div className="md:col-span-3 flex">
                         <MacroWidget />
                     </div>
 
                     {/* Indices: Col 3 */}
-                    <div className="md:col-span-3 h-[300px]">
+                    <div className="md:col-span-3 flex">
                         <MarketFlowWidget
                             title={t('globalIndices')}
                             items={[...(marketData?.indices?.us || []), ...(marketData?.indices?.hk || [])].slice(0, 5)}
@@ -128,12 +128,12 @@ export default function Dashboard() {
                     </div>
 
                     {/* Crypto: Col 3 */}
-                    <div className="md:col-span-3 h-[300px]">
+                    <div className="md:col-span-3 flex">
                         <CryptoWidget />
                     </div>
 
                     {/* Blue Chips: Col 3 */}
-                    <div className="md:col-span-3 h-[300px]">
+                    <div className="md:col-span-3 flex">
                         <MarketFlowWidget
                             title={t('blueChipsTech')}
                             items={marketData?.stocks?.slice(0, 5) || []}

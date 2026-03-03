@@ -27,7 +27,7 @@ export default function CryptoWidget() {
     if (loading) return <div className="h-full flex items-center justify-center text-[var(--text-muted)]">{t('loadingCrypto')}</div>;
 
     return (
-        <div className="flex flex-col h-full bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-xl p-4">
+        <div className="w-full flex flex-col h-full bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-xl p-4">
             <h3 className="text-sm font-semibold text-[var(--text-secondary)] mb-4 tracking-wider">{t('cryptoAssets')}</h3>
             <div className="flex flex-col gap-3">
                 {data.map((coin) => (

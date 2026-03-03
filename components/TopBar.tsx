@@ -131,9 +131,8 @@ export default function TopBar() {
 
                 <nav className="hidden md:flex flex-row items-center gap-1">
                     <NavItem href="/dashboard" icon={Activity} label={t('dashboard')} />
-                    <NavItem href="/analysis" icon={BrainCircuit} label="AI Analysis" />
                     <NavItem href="/dashboard/news" icon={Globe} label={t('news')} />
-                    <NavItem href="/dashboard/settings" icon={Settings} label={t('settings')} />
+                    <NavItem href="/analysis" icon={BrainCircuit} label="AI Analysis" />
                 </nav>
             </div>
 

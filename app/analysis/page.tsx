@@ -344,7 +344,7 @@ export default function AnalysisPage() {
             <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
 
                 {/* Header Area */}
-                <div className="text-center mb-16 mt-8">
+                <div className="text-center mb-10 mt-2">
                     <motion.div
                         initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
                         className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 mb-6"
@@ -361,7 +361,7 @@ export default function AnalysisPage() {
 
 
                     {/* Hero Search Bar - Centered */}
-                    <div className="max-w-3xl mx-auto mb-16 mt-10">
+                    <div className="max-w-3xl mx-auto mb-10 mt-8">
                         <form onSubmit={handleAnalyze} className="relative group">
                             <div className="absolute inset-0 bg-blue-500/20 rounded-xl blur-lg transition-opacity opacity-0 group-hover:opacity-100" />
                             <div className="relative flex items-center bg-[#111113] border border-white/10 rounded-xl overflow-hidden shadow-2xl">
@@ -378,7 +378,7 @@ export default function AnalysisPage() {
                                         <button
                                             type="button"
                                             onClick={handleStop}
-                                            className="bg-red-600/80 hover:bg-red-500 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
+                                            className="bg-red-600/80 hover:bg-red-500 text-white px-8 py-3.5 rounded-lg font-medium transition-colors flex items-center gap-2"
                                         >
                                             <XCircle className="w-5 h-5" />
                                             {t('stopBtn')}
@@ -387,7 +387,7 @@ export default function AnalysisPage() {
                                         <button
                                             type="submit"
                                             disabled={!ticker}
-                                            className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+                                            className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3.5 rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
                                         >
                                             <PlayCircle className="w-5 h-5" />
                                             {t('analyzeBtn')}
@@ -404,8 +404,8 @@ export default function AnalysisPage() {
 
                     {/* Left Column (Terminal & History) - 4 Cols */}
                     <div className="lg:col-span-4 flex flex-col gap-6">
-                        {/* Right Column: History Panel */}
-                        <div className="bg-[#111113] border border-white/10 rounded-2xl flex flex-col h-[280px]">
+                        {/* Left Column: History Panel */}
+                        <div className="bg-[#111113] border border-white/10 rounded-2xl flex flex-col h-[600px] shadow-xl">
                             <div className="p-4 border-b border-white/10 flex items-center justify-between shrink-0">
                                 <h3 className="text-sm font-semibold text-slate-300 px-1">{t('recentAnalyses')}</h3>
                                 {history.length > 0 && (
@@ -422,11 +422,11 @@ export default function AnalysisPage() {
                             </div>
                             <div className="p-4 overflow-y-auto space-y-3 flex-1 custom-scrollbar">
                                 {history.length === 0 ? (
-                                    <div className="h-full flex flex-col items-center justify-center text-slate-500 text-sm py-8">
-                                        <div className="w-10 h-10 rounded-full border border-dashed border-white/10 mb-2 flex items-center justify-center">
-                                            <Activity className="w-4 h-4 opacity-50" />
+                                    <div className="h-full flex flex-col items-center justify-center text-slate-500 text-sm pb-8">
+                                        <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 mb-4 flex items-center justify-center shadow-lg">
+                                            <Activity className="w-6 h-6 text-slate-400 opacity-60" />
                                         </div>
-                                        {t('noPastAnalyses')}
+                                        <span className="font-medium">{t('noPastAnalyses')}</span>
                                     </div>
                                 ) : (
                                     history.map((item) => (
@@ -474,8 +474,15 @@ export default function AnalysisPage() {
                             <div className="flex-1 p-5 overflow-y-auto font-mono text-sm space-y-4 scrollbar-thin scrollbar-thumb-white/10">
                                 <AnimatePresence>
                                     {messages.length === 0 && !isAnalyzing && (
-                                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-slate-500 italic">
-                                            {t('waitingForInput')}
+                                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center h-full text-slate-500 italic pb-12">
+                                            <div className="text-blue-500/30 mb-4 animate-pulse">
+                                                <BrainCircuit className="w-12 h-12" />
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-slate-600 font-bold">~ </span>
+                                                {t('waitingForInput')}
+                                                <span className="inline-block w-2 h-4 bg-blue-500/50 animate-pulse ml-1" />
+                                            </div>
                                         </motion.div>
                                     )}
                                     {messages.map((msg, idx) => (
