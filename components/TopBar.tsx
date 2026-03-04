@@ -49,8 +49,7 @@ export default function TopBar() {
         await fetch('/api/auth/logout', { method: 'POST' });
         setUser(null);
         setShowUserMenu(false);
-        router.push('/login');
-        router.refresh();
+        router.refresh(); // Stays on current page but refreshes SSR state
     };
 
     const NavItem = ({ href, icon: Icon, label }: { href: string, icon: any, label: string }) => {
@@ -147,7 +146,8 @@ export default function TopBar() {
                                         <p className="text-xs text-slate-500 font-medium truncate">{user.email}</p>
                                     </div>
                                     <button
-                                        onClick={() => {
+                                        onMouseDown={(e) => {
+                                            e.preventDefault(); // Prevents focus loss issues
                                             handleLogout();
                                         }}
                                         className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 font-medium transition-colors flex items-center gap-2 relative z-50 cursor-pointer"
