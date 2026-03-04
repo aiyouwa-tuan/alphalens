@@ -33,8 +33,8 @@ export async function GET(request: Request) {
         const { data, error } = await query;
 
         if (error) {
-            console.error('Supabase get analysis history error:', error);
-            return NextResponse.json({ error: 'Database Error' }, { status: 500 });
+            console.error('Supabase get analysis history error:', JSON.stringify(error));
+            return NextResponse.json({ error: error }, { status: 500 });
         }
 
         // Map column names back to frontend object structure
@@ -92,8 +92,8 @@ export async function POST(request: Request) {
         });
 
         if (error) {
-            console.error('Supabase analysis history POST error:', error);
-            return NextResponse.json({ error: 'Database error' }, { status: 500 });
+            console.error('Supabase analysis history POST error:', JSON.stringify(error));
+            return NextResponse.json({ error: error }, { status: 500 });
         }
 
         return NextResponse.json({ success: true });
