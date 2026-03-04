@@ -29,14 +29,32 @@ export default function AuthCallbackPage() {
                 // Optionally show error to user
                 router.push('/login?error=auth_failed');
             } else if (session) {
-                // Successful login
+                // Successful login - MUST sync to Next.js Http-Only cookie for SSR/Logouts
+                try {
+                    await fetch('/api/auth/sync', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: session.user.id })
+                    });
+                } catch (e) {
+                    console.error("Cookie sync failed:", e);
+                }
                 router.push('/dashboard');
             } else {
                 // No session found? Might need to wait for the client to process the URL hash?
                 // Supabase-js usually does this synchronously on init/getSession if the URL has the params.
                 // But just in case, we can listen for the state change.
-                const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+                const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
                     if (event === 'SIGNED_IN' && session) {
+                        try {
+                            await fetch('/api/auth/sync', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ userId: session.user.id })
+                            });
+                        } catch (e) {
+                            console.error("Cookie sync failed:", e);
+                        }
                         router.push('/dashboard');
                     }
                 });

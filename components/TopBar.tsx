@@ -41,9 +41,14 @@ export default function TopBar() {
         return () => subscription.unsubscribe();
     }, [supabase]);
 
+    const [showUserMenu, setShowUserMenu] = useState(false);
+
     const handleLogout = async () => {
         if (supabase) await supabase.auth.signOut();
+        // Clear server-side cookie
+        await fetch('/api/auth/logout', { method: 'POST' });
         setUser(null);
+        setShowUserMenu(false);
         router.push('/login');
         router.refresh();
     };
@@ -115,19 +120,35 @@ export default function TopBar() {
 
                 {/* User Profile */}
                 {user ? (
-                    <button
-                        onClick={handleLogout}
-                        title={t('logout')}
-                        className="flex items-center gap-2 ml-2 pl-2 border-l border-slate-200 hover:opacity-80 transition-opacity"
-                    >
-                        <div className="w-8 h-8 rounded-full bg-[#0066FF] flex items-center justify-center text-xs font-bold text-white shadow-sm">
-                            NX
-                        </div>
-                        <div className="hidden sm:flex items-center gap-1">
-                            <span className="text-sm font-semibold text-slate-700">Pro User</span>
-                            <ChevronDown className="w-4 h-4 text-slate-400" />
-                        </div>
-                    </button>
+                    <div className="relative">
+                        <button
+                            onClick={() => setShowUserMenu(!showUserMenu)}
+                            className="flex items-center gap-2 ml-2 pl-2 border-l border-slate-200 hover:opacity-80 transition-opacity focus:outline-none"
+                        >
+                            <div className="w-8 h-8 rounded-full bg-[#0066FF] flex items-center justify-center text-xs font-bold text-white shadow-sm">
+                                {user.email ? user.email.substring(0, 2).toUpperCase() : 'US'}
+                            </div>
+                            <div className="hidden sm:flex items-center gap-1">
+                                <span className="text-sm font-semibold text-slate-700 truncate max-w-[100px]">{user.email || 'User'}</span>
+                                <ChevronDown className="w-4 h-4 text-slate-400" />
+                            </div>
+                        </button>
+
+                        {/* Dropdown Menu */}
+                        {showUserMenu && (
+                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-100 py-1 z-50 animate-in fade-in slide-in-from-top-2">
+                                <div className="px-4 py-2 border-b border-slate-50">
+                                    <p className="text-xs text-slate-500 font-medium truncate">{user.email}</p>
+                                </div>
+                                <button
+                                    onClick={handleLogout}
+                                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 font-medium transition-colors flex items-center gap-2"
+                                >
+                                    Log Out
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 ) : (
                     <div className="flex items-center gap-3 ml-2 border-l border-slate-200 pl-4">
                         <Link href="/login" className="text-sm font-semibold text-slate-600 hover:text-slate-900">
