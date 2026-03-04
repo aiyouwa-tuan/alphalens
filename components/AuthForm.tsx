@@ -2,13 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
-import { Zap } from 'lucide-react'; // Added Zap import
-
-// Initialize Supabase client (Client-side)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+import { supabase } from '@/lib/supabase';
+import { Zap } from 'lucide-react';
 
 interface AuthFormProps {
     initialView?: 'login' | 'register';

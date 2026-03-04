@@ -1,21 +1,18 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+import { supabase } from '@/lib/supabase';
 
 export default function TelemetryTracker() {
     const trackingIdRef = useRef<string | null>(null);
     const durationRef = useRef<number>(0);
 
     useEffect(() => {
-        if (!supabaseUrl || !supabaseKey) return;
-        const supabase = createClient(supabaseUrl, supabaseKey);
+        if (!supabase) return;
+        const client = supabase;
 
         const initTelemetry = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
+            const { data: { session } } = await client.auth.getSession();
             if (!session?.user?.email) return;
 
             // Only track once per browser session

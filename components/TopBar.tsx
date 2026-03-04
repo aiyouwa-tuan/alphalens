@@ -1,76 +1,63 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
+import { usePathname } from 'next/navigation';
 import { useLanguage } from '@/components/LanguageProvider';
+import { supabase } from '@/lib/supabase';
 import { clsx } from 'clsx';
-import { LayoutDashboard, Briefcase, Star, LineChart, Bell, Settings, ChevronDown, Zap, Globe } from 'lucide-react';
+import { LayoutDashboard, Briefcase, LineChart, Bell, Settings, ChevronDown, Zap, Globe, LogOut } from 'lucide-react';
 
 export default function TopBar() {
     const { t, language, setLanguage } = useLanguage();
     const pathname = usePathname();
-    const router = useRouter();
 
     // Auth State
     const [user, setUser] = useState<any>(null);
-    let supabase: any = null;
-
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    try {
-        if (supabaseUrl && supabaseKey) {
-            supabase = createClient(supabaseUrl, supabaseKey);
-        }
-    } catch (e) {
-        console.error("Supabase Init Failed:", e);
-    }
-
-    useEffect(() => {
-        if (!supabase) return;
-        const checkUser = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            setUser(session?.user || null);
-        };
-        checkUser();
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
-            setUser(session?.user || null);
-        });
-        return () => subscription.unsubscribe();
-    }, [supabase]);
-
     const [showUserMenu, setShowUserMenu] = useState(false);
     const menuRef = React.useRef<HTMLDivElement>(null);
 
     useEffect(() => {
+        if (!supabase) return;
+        const client = supabase;
+        const checkUser = async () => {
+            const { data: { session } } = await client.auth.getSession();
+            setUser(session?.user || null);
+        };
+        checkUser();
+
+        const { data: { subscription } } = client.auth.onAuthStateChange((_event: any, session: any) => {
+            setUser(session?.user || null);
+        });
+        return () => subscription.unsubscribe();
+    }, []);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        if (!showUserMenu) return;
         const handleClickOutside = (event: MouseEvent) => {
             if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
                 setShowUserMenu(false);
             }
         };
-        if (showUserMenu) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
+        document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [showUserMenu]);
 
-    const handleLogout = async () => {
+    const handleLogout = useCallback(async () => {
+        setShowUserMenu(false);
         try {
             if (supabase) {
-                await supabase.auth.signOut();
+                const client = supabase;
+                await client.auth.signOut();
             }
-            // Clear server-side cookie gracefully
-            await fetch('/api/auth/logout', { method: 'POST' }).catch(console.error);
+            await fetch('/api/auth/logout', { method: 'POST' }).catch(() => { });
         } catch (e) {
             console.error("Logout error:", e);
-        } finally {
-            setUser(null);
-            setShowUserMenu(false);
-            window.location.reload();
         }
-    };
+        // Force hard reload to fully clear all state
+        window.location.reload();
+    }, []);
 
     const NavItem = ({ href, icon: Icon, label }: { href: string, icon: any, label: string }) => {
         const active = pathname === href || (href === '/analysis' && pathname.startsWith('/analysis'));
@@ -141,30 +128,34 @@ export default function TopBar() {
                 {user ? (
                     <div className="relative" ref={menuRef}>
                         <button
-                            onClick={() => setShowUserMenu(!showUserMenu)}
+                            onClick={() => setShowUserMenu(prev => !prev)}
                             className="flex items-center gap-2 ml-2 pl-2 border-l border-slate-200 hover:opacity-80 transition-opacity focus:outline-none"
                         >
                             <div className="w-8 h-8 rounded-full bg-[#0066FF] flex items-center justify-center text-xs font-bold text-white shadow-sm">
-                                {user.email ? user.email.substring(0, 2).toUpperCase() : 'US'}
+                                {user.email ? user.email.substring(0, 2).toUpperCase() : 'U'}
                             </div>
                             <div className="hidden sm:flex items-center gap-1">
-                                <span className="text-sm font-semibold text-slate-700 truncate max-w-[100px]">{user.email || 'User'}</span>
-                                <ChevronDown className="w-4 h-4 text-slate-400" />
+                                <span className="text-sm font-semibold text-slate-700 truncate max-w-[120px]">{user.email || 'User'}</span>
+                                <ChevronDown className={clsx("w-4 h-4 text-slate-400 transition-transform", showUserMenu && "rotate-180")} />
                             </div>
                         </button>
 
                         {/* Dropdown Menu */}
                         {showUserMenu && (
-                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-100 py-1 z-50 animate-in fade-in slide-in-from-top-2">
-                                <div className="px-4 py-2 border-b border-slate-50">
-                                    <p className="text-xs text-slate-500 font-medium truncate">{user.email}</p>
+                            <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-xl border border-slate-200/80 py-1 z-[9999]">
+                                <div className="px-4 py-2.5 border-b border-slate-100">
+                                    <p className="text-xs text-slate-400 font-medium">当前账号</p>
+                                    <p className="text-sm text-slate-700 font-medium truncate mt-0.5">{user.email}</p>
                                 </div>
-                                <button
-                                    onClick={() => handleLogout()}
-                                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 font-medium transition-colors flex items-center gap-2 relative z-50 cursor-pointer"
-                                >
-                                    Log Out
-                                </button>
+                                <div className="py-1">
+                                    <button
+                                        onClick={handleLogout}
+                                        className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 font-medium transition-colors flex items-center gap-2.5 cursor-pointer"
+                                    >
+                                        <LogOut className="w-4 h-4" />
+                                        退出登录
+                                    </button>
+                                </div>
                             </div>
                         )}
                     </div>

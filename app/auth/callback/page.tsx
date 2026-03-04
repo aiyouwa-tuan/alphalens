@@ -2,11 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+import { supabase } from '@/lib/supabase';
 
 export default function AuthCallbackPage() {
     const router = useRouter();
@@ -17,19 +13,15 @@ export default function AuthCallbackPage() {
             router.push('/login?error=config_missing');
             return;
         }
-        // The Supabase client automatically handles the OAuth callback by parsing the URL hash/query
-        // and persisting the session to localStorage.
-        // We just need to wait a moment or check session, then redirect.
+        const client = supabase; // Bind non-null for TS narrowing
 
         const handleAuthCallback = async () => {
-            const { data: { session }, error } = await supabase.auth.getSession();
+            const { data: { session }, error } = await client.auth.getSession();
 
             if (error) {
                 console.error('Auth callback error:', error);
-                // Optionally show error to user
                 router.push('/login?error=auth_failed');
             } else if (session) {
-                // Successful login - MUST sync to Next.js Http-Only cookie for SSR/Logouts
                 try {
                     await fetch('/api/auth/sync', {
                         method: 'POST',
@@ -41,10 +33,7 @@ export default function AuthCallbackPage() {
                 }
                 router.push('/dashboard');
             } else {
-                // No session found? Might need to wait for the client to process the URL hash?
-                // Supabase-js usually does this synchronously on init/getSession if the URL has the params.
-                // But just in case, we can listen for the state change.
-                const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+                const { data: { subscription } } = client.auth.onAuthStateChange(async (event, session) => {
                     if (event === 'SIGNED_IN' && session) {
                         try {
                             await fetch('/api/auth/sync', {
@@ -59,11 +48,10 @@ export default function AuthCallbackPage() {
                     }
                 });
 
-                // Fallback check after short delay if no event fires (e.g. already handled)
                 setTimeout(async () => {
-                    const { data: { session: retrySession } } = await supabase.auth.getSession();
+                    const { data: { session: retrySession } } = await client.auth.getSession();
                     if (retrySession) router.push('/dashboard');
-                    else router.push('/login'); // Fallback
+                    else router.push('/login');
                 }, 2000);
 
                 return () => subscription.unsubscribe();
