@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
+import requests
 
 from dotenv import load_dotenv
 
@@ -199,6 +200,22 @@ async def start_debate(request: Request, body: DebateRequest):
             
             args["stream_mode"] = "updates"
             
+            # Dictionary to accumulate final reports for Supabase
+            final_data = {
+                "id": task_id,
+                "ticker": ticker,
+                "status": "completed",
+                "ip_address": ip,
+                "start_time": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "market_report": None,
+                "fundamentals_report": None,
+                "sentiment_report": None,
+                "technical_report": None,
+                "external_news": None,
+                "markdown": None
+            }
+
             # Loop runs asynchronously
             async for chunk in ta.graph.astream(init_agent_state, **args):
                 # Check for cancellation
@@ -210,9 +227,16 @@ async def start_debate(request: Request, body: DebateRequest):
                          payload = {"type": "update", "node": node_name}
                          
                          if isinstance(node_state, dict):
-                             for key in ["market_report", "sentiment_report", "news_report", "fundamentals_report", "investment_plan", "final_trade_decision"]:
+                             for key in ["market_report", "sentiment_report", "news_report", "fundamentals_report", "technical_report", "investment_plan", "final_trade_decision"]:
                                  if key in node_state and node_state[key]:
                                      payload[key] = node_state[key]
+                                     # Cache for DB
+                                     if key == "market_report": final_data["market_report"] = node_state[key]
+                                     elif key == "sentiment_report": final_data["sentiment_report"] = node_state[key]
+                                     elif key == "news_report": final_data["external_news"] = node_state[key]
+                                     elif key == "fundamentals_report": final_data["fundamentals_report"] = node_state[key]
+                                     elif key == "technical_report": final_data["technical_report"] = node_state[key]
+                                     elif key == "final_trade_decision": final_data["markdown"] = node_state[key]
                              
                              content = None
                              if "messages" in node_state and node_state["messages"]:
@@ -256,6 +280,30 @@ async def start_debate(request: Request, body: DebateRequest):
                 
             _push_event({"type": "done", "message": "Analysis complete!"})
             ACTIVE_TASKS[task_id]["status"] = "completed"
+            final_data["end_time"] = datetime.now(timezone.utc).isoformat()
+            
+            # Save to Supabase using pure Python requests
+            def _save_to_supabase():
+                supabase_url = os.environ.get("SUPABASE_URL")
+                supabase_key = os.environ.get("SUPABASE_KEY")
+                if supabase_url and supabase_key:
+                    headers = {
+                        "apikey": supabase_key,
+                        "Authorization": f"Bearer {supabase_key}",
+                        "Content-Type": "application/json",
+                        "Prefer": "return=minimal"
+                    }
+                    endpoint = f"{supabase_url}/rest/v1/analysis_history"
+                    try:
+                        res = requests.post(endpoint, headers=headers, json=final_data, timeout=10)
+                        res.raise_for_status()
+                        print(f"✅ Successfully saved task {task_id} to Supabase database.")
+                    except Exception as e:
+                        print(f"❌ Failed to save to Supabase: {e}")
+                else:
+                    print("⚠️ SUPABASE_URL or SUPABASE_KEY is missing from environment variables, skipping DB persistence.")
+                    
+            await asyncio.to_thread(_save_to_supabase)
             
         except asyncio.CancelledError:
              print(f"Task {task_id} canceled.")
