@@ -29,14 +29,14 @@ export default function AuthForm({ initialView = 'login' }: AuthFormProps) {
         // Email Validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!email) {
-            newErrors.email = 'Email is required';
+            newErrors.email = '请输入邮箱地址';
         } else if (!emailRegex.test(email)) {
-            newErrors.email = 'Please enter a valid email address';
+            newErrors.email = '请输入有效的邮箱地址';
         }
 
         // Password Validation
         if (!password) {
-            newErrors.password = 'Password is required';
+            newErrors.password = '请输入密码';
         } else if (!isLogin) {
             // Registration: Stronger rules (Uppercase, Lowercase, Special Char, Length >= 8)
             const hasUpperCase = /[A-Z]/.test(password);
@@ -44,9 +44,9 @@ export default function AuthForm({ initialView = 'login' }: AuthFormProps) {
             const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
 
             if (password.length < 8) {
-                newErrors.password = 'Password must be at least 8 characters';
+                newErrors.password = '密码至少需要8位字符';
             } else if (!hasUpperCase || !hasLowerCase || !hasSpecialChar) {
-                newErrors.password = 'Password must contain uppercase, lowercase, and a special character';
+                newErrors.password = '密码至少8位，需包含大写字母、小写字母和特殊字符';
             }
         }
 
@@ -98,7 +98,7 @@ export default function AuthForm({ initialView = 'login' }: AuthFormProps) {
             });
 
             const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Authentication failed');
+            if (!res.ok) throw new Error(data.error || '认证失败，请重试');
 
             router.push('/dashboard');
             router.refresh();
@@ -114,7 +114,7 @@ export default function AuthForm({ initialView = 'login' }: AuthFormProps) {
             } else { ... } 
             */
         } catch (err: any) {
-            setErrors({ general: err.message || 'Something went wrong' });
+            setErrors({ general: err.message || '操作失败，请重试' });
         } finally {
             setLoading(false);
         }
@@ -139,7 +139,7 @@ export default function AuthForm({ initialView = 'login' }: AuthFormProps) {
             <div className="text-center mb-8">
                 <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-2">AlphaLens</h1>
                 <p className="text-[var(--text-secondary)]">
-                    {isLogin ? 'Welcome back via Email or Google' : 'Create your secure account'}
+                    {isLogin ? '使用邮箱或 Google 登录' : '创建您的安全账户'}
                 </p>
             </div>
 
@@ -153,7 +153,7 @@ export default function AuthForm({ initialView = 'login' }: AuthFormProps) {
             <form onSubmit={handleSubmit} className="space-y-5">
                 {/* Email Input */}
                 <div className="space-y-2">
-                    <label className="text-sm font-medium text-[var(--text-secondary)]">Email Address</label>
+                    <label className="text-sm font-medium text-[var(--text-secondary)]">邮箱地址</label>
                     <input
                         type="email"
                         value={email}
@@ -168,7 +168,7 @@ export default function AuthForm({ initialView = 'login' }: AuthFormProps) {
 
                 {/* Password Input */}
                 <div className="space-y-2">
-                    <label className="text-sm font-medium text-[var(--text-secondary)]">Password</label>
+                    <label className="text-sm font-medium text-[var(--text-secondary)]">密码</label>
                     <input
                         type="password"
                         value={password}
@@ -187,7 +187,7 @@ export default function AuthForm({ initialView = 'login' }: AuthFormProps) {
                     disabled={loading}
                     className="w-full py-3 px-4 bg-[var(--text-accent)] hover:bg-blue-600 text-white font-semibold rounded-lg shadow-lg shadow-blue-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    {loading ? 'Processing...' : (isLogin ? 'Sign In' : 'Create Account')}
+                    {loading ? '处理中...' : (isLogin ? '登 录' : '注 册')}
                 </button>
             </form>
 
@@ -197,7 +197,7 @@ export default function AuthForm({ initialView = 'login' }: AuthFormProps) {
                     <div className="w-full border-t border-[var(--border-subtle)]"></div>
                 </div>
                 <div className="relative flex justify-center text-sm">
-                    <span className="px-4 bg-[var(--bg-panel)] text-[var(--text-secondary)]">Or continue with</span>
+                    <span className="px-4 bg-[var(--bg-panel)] text-[var(--text-secondary)]">或者使用</span>
                 </div>
             </div>
 
@@ -225,17 +225,17 @@ export default function AuthForm({ initialView = 'login' }: AuthFormProps) {
                         d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                     />
                 </svg>
-                Sign in with Google
+                使用 Google 账号登录
             </button>
 
             {/* Toggle Mode */}
             <div className="mt-8 text-center text-sm text-[var(--text-secondary)]">
-                {isLogin ? "Don't have an account? " : "Already have an account? "}
+                {isLogin ? '还没有账号？' : '已有账号？'}
                 <button
                     onClick={toggleMode}
                     className="text-[var(--text-accent)] hover:underline font-semibold ml-1"
                 >
-                    {isLogin ? 'Sign up' : 'Log in'}
+                    {isLogin ? '立即注册' : '去登录'}
                 </button>
             </div>
         </div>
