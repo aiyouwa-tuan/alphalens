@@ -42,14 +42,34 @@ export default function TopBar() {
     }, [supabase]);
 
     const [showUserMenu, setShowUserMenu] = useState(false);
+    const menuRef = React.useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setShowUserMenu(false);
+            }
+        };
+        if (showUserMenu) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showUserMenu]);
 
     const handleLogout = async () => {
-        if (supabase) await supabase.auth.signOut();
-        // Clear server-side cookie
-        await fetch('/api/auth/logout', { method: 'POST' });
-        setUser(null);
-        setShowUserMenu(false);
-        router.refresh(); // Stays on current page but refreshes SSR state
+        try {
+            if (supabase) {
+                await supabase.auth.signOut();
+            }
+            // Clear server-side cookie gracefully
+            await fetch('/api/auth/logout', { method: 'POST' }).catch(console.error);
+        } catch (e) {
+            console.error("Logout error:", e);
+        } finally {
+            setUser(null);
+            setShowUserMenu(false);
+            window.location.reload();
+        }
     };
 
     const NavItem = ({ href, icon: Icon, label }: { href: string, icon: any, label: string }) => {
@@ -119,7 +139,7 @@ export default function TopBar() {
 
                 {/* User Profile */}
                 {user ? (
-                    <div className="relative">
+                    <div className="relative" ref={menuRef}>
                         <button
                             onClick={() => setShowUserMenu(!showUserMenu)}
                             className="flex items-center gap-2 ml-2 pl-2 border-l border-slate-200 hover:opacity-80 transition-opacity focus:outline-none"
@@ -135,27 +155,17 @@ export default function TopBar() {
 
                         {/* Dropdown Menu */}
                         {showUserMenu && (
-                            <>
-                                {/* Invisible Backdrop to capture clicks outside */}
-                                <div
-                                    className="fixed inset-0 z-40"
-                                    onClick={() => setShowUserMenu(false)}
-                                ></div>
-                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-100 py-1 z-50 animate-in fade-in slide-in-from-top-2">
-                                    <div className="px-4 py-2 border-b border-slate-50">
-                                        <p className="text-xs text-slate-500 font-medium truncate">{user.email}</p>
-                                    </div>
-                                    <button
-                                        onMouseDown={(e) => {
-                                            e.preventDefault(); // Prevents focus loss issues
-                                            handleLogout();
-                                        }}
-                                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 font-medium transition-colors flex items-center gap-2 relative z-50 cursor-pointer"
-                                    >
-                                        Log Out
-                                    </button>
+                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-100 py-1 z-50 animate-in fade-in slide-in-from-top-2">
+                                <div className="px-4 py-2 border-b border-slate-50">
+                                    <p className="text-xs text-slate-500 font-medium truncate">{user.email}</p>
                                 </div>
-                            </>
+                                <button
+                                    onClick={() => handleLogout()}
+                                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 font-medium transition-colors flex items-center gap-2 relative z-50 cursor-pointer"
+                                >
+                                    Log Out
+                                </button>
+                            </div>
                         )}
                     </div>
                 ) : (
