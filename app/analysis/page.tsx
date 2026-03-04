@@ -228,7 +228,7 @@ export default function AnalysisPage() {
                                             ? { ...item, status: (data.type === 'error' ? 'error' : 'completed') as 'error' | 'completed', endTime: new Date().toLocaleString('zh-CN', { hour12: false }), markdown: data.type === 'error' ? item.markdown : currentMarkdown }
                                             : item
                                     );
-                                    localStorage.setItem('alphalens_analysis_history', JSON.stringify(updated));
+                                    saveHistory(updated);
                                     return updated;
                                 });
                             }
@@ -249,7 +249,7 @@ export default function AnalysisPage() {
                                         ? { ...item, status: 'error' as const, endTime: new Date().toLocaleString('zh-CN', { hour12: false }) }
                                         : item
                                 );
-                                localStorage.setItem('alphalens_analysis_history', JSON.stringify(updated));
+                                saveHistory(updated);
                                 return updated;
                             });
                         } catch (e) {
@@ -265,41 +265,73 @@ export default function AnalysisPage() {
         }
     };
 
-    // Load history from localStorage on mount and resume any disconnected 'running' tasks
+    // Load history from database on mount and resume any disconnected 'running' tasks
     useEffect(() => {
-        let savedHistory: AnalysisHistoryItem[] = [];
-        try {
-            const saved = localStorage.getItem('alphalens_analysis_history');
-            if (saved) {
-                savedHistory = JSON.parse(saved);
-                setHistory(savedHistory);
+        const loadDbHistory = async () => {
+            try {
+                // One-time migration for old users
+                const saved = localStorage.getItem('alphalens_analysis_history');
+                if (saved) {
+                    try {
+                        const localHistory = JSON.parse(saved);
+                        if (Array.isArray(localHistory) && localHistory.length > 0) {
+                            await fetch('/api/analysis/history', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(localHistory)
+                            });
+                        }
+                        localStorage.removeItem('alphalens_analysis_history'); // Delete it so it doesn't trigger again
+                    } catch (e) {
+                        console.error("Migration error:", e);
+                    }
+                }
+
+                const res = await fetch('/api/analysis/history');
+                if (res.ok) {
+                    const savedHistory: AnalysisHistoryItem[] = await res.json();
+                    setHistory(savedHistory);
+
+                    // Auto-resume background task if we find one in 'running' state
+                    const activeTask = savedHistory.find(h => h.status === 'running' && h.taskId);
+                    if (activeTask) {
+                        console.log("Resuming background task:", activeTask.taskId);
+                        setTicker(activeTask.ticker);
+                        setIsAnalyzing(true);
+                        setMessages([]);
+
+                        abortControllerRef.current = new AbortController();
+                        processStream(activeTask.taskId!, activeTask.id, abortControllerRef.current.signal);
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to fetch history from database", e);
             }
-        } catch (e) {
-            console.error("Failed to parse history from localstorage", e);
-        }
-
-        // Auto-resume background task if we find one in 'running' state
-        const activeTask = savedHistory.find(h => h.status === 'running' && h.taskId);
-        if (activeTask) {
-            console.log("Resuming background task:", activeTask.taskId);
-            setTicker(activeTask.ticker);
-            setIsAnalyzing(true);
-            setMessages([]);
-
-            abortControllerRef.current = new AbortController();
-            processStream(activeTask.taskId!, activeTask.id, abortControllerRef.current.signal);
-        }
+        };
+        loadDbHistory();
     }, []);
 
-    // Helper to completely sync history to state and localstorage
-    const saveHistory = (newHistory: AnalysisHistoryItem[]) => {
+    // Helper to completely sync history to state and database
+    const saveHistory = async (newHistory: AnalysisHistoryItem[]) => {
         setHistory(newHistory);
-        localStorage.setItem('alphalens_analysis_history', JSON.stringify(newHistory.slice(0, 50))); // Keep last 50
+        try {
+            await fetch('/api/analysis/history', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newHistory)
+            });
+        } catch (error) {
+            console.error('Failed to sync history to database', error);
+        }
     };
 
-    const clearHistory = () => {
+    const clearHistory = async () => {
         setHistory([]);
-        localStorage.removeItem('alphalens_analysis_history');
+        try {
+            await fetch('/api/analysis/history', { method: 'DELETE' });
+        } catch (error) {
+            console.error('Failed to clear history in database', error);
+        }
     };
 
     const loadHistoryItem = (item: AnalysisHistoryItem) => {
@@ -498,7 +530,7 @@ export default function AnalysisPage() {
                             ? { ...item, status: 'error' as const, endTime: new Date().toLocaleString('zh-CN', { hour12: false }) }
                             : item
                     );
-                    localStorage.setItem('alphalens_analysis_history', JSON.stringify(updated));
+                    saveHistory(updated);
                     return updated;
                 });
             }
