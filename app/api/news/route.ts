@@ -50,7 +50,11 @@ export async function GET(request: Request) {
         const newsItems = await fetchFinnhubNews(symbol);
 
         // Take top 10
-        const topNews = newsItems.slice(0, 10);
+        const topNews = newsItems.slice(0, 10).map((item: any) => ({
+            ...item,
+            // Clean HTML tags that Finnhub sometimes includes before translating
+            summary: item.summary ? item.summary.replace(/<[^>]*>?/gm, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim() : ''
+        }));
 
         if (lang === 'zh') {
             // Translate to Chinese
