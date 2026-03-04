@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/components/LanguageProvider';
 import ManageFiltersModal from '@/components/ManageFiltersModal';
+import { createClient } from '@supabase/supabase-js';
 
 // Initial default filters
 const DEFAULT_FILTERS = [
@@ -30,6 +31,34 @@ export default function NewsPage() {
     const [selectedFilter, setSelectedFilter] = useState('all');
     const [filteredNews, setFilteredNews] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
+
+    // Auth State
+    const [user, setUser] = useState<any>(null);
+    let supabase: any = null;
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    try {
+        if (supabaseUrl && supabaseKey) {
+            supabase = createClient(supabaseUrl, supabaseKey);
+        }
+    } catch (e) {
+        console.error("Supabase Init Failed:", e);
+    }
+
+    useEffect(() => {
+        if (!supabase) return;
+        const checkUser = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            setUser(session?.user || null);
+        };
+        checkUser();
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
+            setUser(session?.user || null);
+        });
+        return () => subscription.unsubscribe();
+    }, [supabase]);
 
     // Load filters from localStorage on mount
     useEffect(() => {
@@ -143,12 +172,14 @@ export default function NewsPage() {
                     <div className="bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-xl p-4 sticky top-6">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="font-bold text-[var(--text-secondary)] text-xs uppercase tracking-wider">{t('marketFocus')}</h3>
-                            <button
-                                onClick={() => setIsManageModalOpen(true)}
-                                className="text-xs text-[var(--text-accent)] hover:text-white transition-colors font-medium"
-                            >
-                                {t('manage')}
-                            </button>
+                            {user && (
+                                <button
+                                    onClick={() => setIsManageModalOpen(true)}
+                                    className="text-xs text-[var(--text-accent)] hover:text-white transition-colors font-medium"
+                                >
+                                    {t('manage')}
+                                </button>
+                            )}
                         </div>
                         <div className="space-y-1">
                             {filters.map(item => (

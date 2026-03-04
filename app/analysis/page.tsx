@@ -146,7 +146,7 @@ const getUserFriendlyStatus = (node: string | null, t: any) => {
 }
 
 export default function AnalysisPage() {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     const [ticker, setTicker] = useState("");
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [messages, setMessages] = useState<AgentMessage[]>([]);
@@ -156,8 +156,29 @@ export default function AnalysisPage() {
     const [isExportingPDF, setIsExportingPDF] = useState(false);
     const abortControllerRef = useRef<AbortController | null>(null);
 
+    // Limit State
+    const [limitData, setLimitData] = useState<{ used: number, total: number }>({ used: 0, total: 3 });
+
     // History State
     const [history, setHistory] = useState<AnalysisHistoryItem[]>([]);
+
+    // Fetch limits from backend
+    const fetchLimit = async () => {
+        try {
+            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+            const res = await fetch(`${backendUrl}/api/debate/limit`);
+            if (res.ok) {
+                const data = await res.json();
+                setLimitData({ used: data.used, total: data.limit });
+            }
+        } catch (e) {
+            console.error("Failed to fetch limit:", e);
+        }
+    };
+
+    useEffect(() => {
+        fetchLimit();
+    }, []);
 
     // Load history from localStorage on mount to prevent hydration errors
     useEffect(() => {
@@ -388,6 +409,9 @@ export default function AnalysisPage() {
                                 setIsAnalyzing(false);
                                 setActiveNode(null);
 
+                                // Refresh limit on completion
+                                fetchLimit();
+
                                 // Mark history as completed
                                 setHistory(prev => {
                                     const updated = prev.map(item =>
@@ -409,6 +433,9 @@ export default function AnalysisPage() {
                             setMessages(prev => [...prev, { type: "error", message: errData.error }]);
                             setIsAnalyzing(false);
                             setActiveNode(null);
+
+                            // Refresh limit on error
+                            fetchLimit();
 
                             // Mark history as error
                             setHistory(prev => {
@@ -524,7 +551,7 @@ export default function AnalysisPage() {
                             ) : (
                                 <button
                                     type="submit"
-                                    disabled={!ticker.trim()}
+                                    disabled={!ticker.trim() || limitData.used >= limitData.total}
                                     className="px-6 py-3 bg-[#0066FF] text-white font-bold rounded-xl hover:bg-blue-700 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-blue-500/20"
                                 >
                                     {t("analyzeNowBtn")}
@@ -532,6 +559,11 @@ export default function AnalysisPage() {
                                 </button>
                             )}
                         </form>
+                        <div className="mt-4 text-sm font-medium text-slate-500 flex justify-center w-full">
+                            {language === 'zh'
+                                ? `今日总额度：${limitData.total} 次，已使用：${limitData.used} 次，还剩：${Math.max(0, limitData.total - limitData.used)} 次`
+                                : `Daily Limit: ${limitData.total}, Used: ${limitData.used}, Remaining: ${Math.max(0, limitData.total - limitData.used)}`}
+                        </div>
                     </div>
 
                     {/* Sub Search row */}

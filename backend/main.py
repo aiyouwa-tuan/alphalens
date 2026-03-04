@@ -1,7 +1,9 @@
 import os
 import json
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
+import pytz
+from collections import defaultdict
 from pydantic import BaseModel
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,6 +20,25 @@ if os.environ.get("GEMINI_API_KEY") and not os.environ.get("GOOGLE_API_KEY"):
 
 from tradingagents.graph.trading_graph import TradingAgentsGraph
 from tradingagents.default_config import DEFAULT_CONFIG
+
+# In-memory IP usage tracker
+# Structure: { ip: { "date": "2024-03-04", "count": 2 } }
+IP_ANALYSIS_USAGE = defaultdict(lambda: {"date": "", "count": 0})
+DAILY_LIMIT = 3
+BEIJING_TZ = pytz.timezone('Asia/Shanghai')
+
+def get_beijing_date_str():
+    now_utc = datetime.now(timezone.utc)
+    return now_utc.astimezone(BEIJING_TZ).strftime("%Y-%m-%d")
+
+def get_client_ip(request: Request) -> str:
+    # First check x-forwarded-for which Vercel/Render might set
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    if request.client:
+        return request.client.host
+    return "unknown"
 
 app = FastAPI(title="TradingAgents API")
 
@@ -50,13 +71,47 @@ def format_sse(data: dict) -> dict:
     """Format dictionary into SSE standard payload."""
     return {"data": json.dumps(data)}
 
+@app.get("/api/debate/limit")
+async def get_remaining_limit(request: Request):
+    """Returns the remaining analysis limit for the current IP."""
+    ip = get_client_ip(request)
+    current_date = get_beijing_date_str()
+    usage = IP_ANALYSIS_USAGE[ip]
+    
+    if usage["date"] != current_date:
+        usage["date"] = current_date
+        usage["count"] = 0
+        
+    remaining = max(0, DAILY_LIMIT - usage["count"])
+    return {"ip": ip, "used": usage["count"], "remaining": remaining, "limit": DAILY_LIMIT}
+
 @app.post("/api/debate")
 async def start_debate(request: Request, body: DebateRequest):
     """
     Starts the TradingAgents workflow for the given ticker and streams back the execution thought process via SSE.
     """
+    ip = get_client_ip(request)
+    current_date = get_beijing_date_str()
+    usage = IP_ANALYSIS_USAGE[ip]
+    
+    # Reset limit if new day
+    if usage["date"] != current_date:
+        usage["date"] = current_date
+        usage["count"] = 0
+        
+    if usage["count"] >= DAILY_LIMIT:
+        print(f"Rate limit exceeded for IP: {ip}. Used: {usage['count']}")
+        async def sse_limit_reached():
+            yield format_sse({"type": "error", "message": f"今日上限 {DAILY_LIMIT} 次已用完，请明天再来。"})
+            yield format_sse({"type": "done", "message": "Limit Reached"})
+        return EventSourceResponse(sse_limit_reached())
+
+    # Increment usage count
+    usage["count"] += 1
+    print(f"IP {ip} used analysis {usage['count']} of {DAILY_LIMIT} for {current_date}")
+
     ticker = body.ticker.upper()
-    current_date = datetime.now().strftime("%Y-%m-%d")
+    current_graph_date = datetime.now().strftime("%Y-%m-%d")
 
     # Configure AlphaLens / TradingAgents
     config = DEFAULT_CONFIG.copy()
@@ -87,7 +142,7 @@ async def start_debate(request: Request, body: DebateRequest):
             try:
                 def _init_graph():
                     graph = TradingAgentsGraph(debug=True, config=config)
-                    initial_state = graph.propagator.create_initial_state(ticker, current_date)
+                    initial_state = graph.propagator.create_initial_state(ticker, current_graph_date)
                     g_args = graph.propagator.get_graph_args()
                     return graph, initial_state, g_args
                     
