@@ -11,6 +11,7 @@ export const metadata: Metadata = {
 };
 
 import { LanguageProvider } from '@/components/LanguageProvider';
+import TelemetryTracker from '@/components/TelemetryTracker';
 
 // ...
 
@@ -23,6 +24,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.className} bg-[var(--bg-app)] text-[var(--text-primary)]`}>
         <LanguageProvider>
+          <TelemetryTracker />
           <div className="flex flex-col min-h-screen">
             <TopBar />
             <div className="flex-1 w-full max-w-[1600px] mx-auto min-h-screen">

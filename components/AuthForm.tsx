@@ -43,11 +43,16 @@ export default function AuthForm({ initialView = 'login' }: AuthFormProps) {
         if (!password) {
             newErrors.password = 'Password is required';
         } else if (!isLogin) {
-            // Registration: Stronger rules
+            // Registration: Stronger rules (Uppercase, Lowercase, Special Char, Length >= 8)
+            const hasUpperCase = /[A-Z]/.test(password);
+            const hasLowerCase = /[a-z]/.test(password);
+            const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
             if (password.length < 8) {
                 newErrors.password = 'Password must be at least 8 characters';
+            } else if (!hasUpperCase || !hasLowerCase || !hasSpecialChar) {
+                newErrors.password = 'Password must contain uppercase, lowercase, and a special character';
             }
-            // Optional: Require number/symbol if desired, but length is key for now.
         }
 
         setErrors(newErrors);
