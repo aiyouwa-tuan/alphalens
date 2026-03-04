@@ -45,44 +45,56 @@ CRITICAL LENGTH REQUIREMENT: Your final risk management output MUST be extremely
 
 Focus on actionable insights and continuous improvement. Build on past lessons, critically evaluate all perspectives, and ensure each decision advances better outcomes.
 
-IMPORTANT: ALL your thoughts, responses, and reports MUST be written in Chinese (简体中文)."""
+IMPORTANT: ALL your thoughts, responses, and reports MUST be written in Chinese (简体中文).
+DO NOT include fake project numbers (like RM-2023-AI-MEGA) or fake dates in your report headers. The current date is {state.get('trade_date', 'today')}."""
 
         response = await llm.ainvoke(prompt)
 
         final_decision_text = response.content
         
+        # Ensure '[]' strings (rendered lists of empty tool calls) are not displayed as blank brackets
+        def safe_report(rep):
+            if not rep or str(rep).strip() == "[]" or str(rep).strip() == "":
+                return "暂无可用分析数据"
+            return rep
+
+        market_report_clean = safe_report(market_research_report)
+        fundamentals_report_clean = safe_report(fundamentals_report)
+        news_report_clean = safe_report(news_report)
+        sentiment_report_clean = safe_report(sentiment_report)
+
         # Manually assemble the 30-page "Master PDF" by injecting all the raw, unabstracted analysts' data directly into the final payload.
         # This completely bypasses the LLM's physical output token ceiling limiting it to ~5 pages.
         full_expanded_report = f"""
-# AlphaLens Master Investment Committee Report: {company_name}
+# AlphaLens 投资委员会最终报告：{company_name}
 
 {final_decision_text}
 
 ---
-# 📚 Appendix 1: Raw Analyst Reports (Unabridged)
-This section contains the exact, unsummarized, multi-page data gathered by our autonomous analyst team. Nothing has been abstracted.
+# 📚 附录 1: 原始分析师报告 (完整版)
+此部分包含我们自主分析师团队收集的准确、未经总结的多页数据。未做任何删减。
 
-## 📊 Market & Technical Analysis
-{market_research_report}
+## 📊 市场与技术分析
+{market_report_clean}
 
-## 🏢 Fundamental Data
-{fundamentals_report}
+## 🏢 基本面数据
+{fundamentals_report_clean}
 
-## 📰 Global & Company News
-{news_report}
+## 📰 全球与公司新闻
+{news_report_clean}
 
-## 📱 Social Media Sentiment
-{sentiment_report}
+## 📱 社交媒体情绪
+{sentiment_report_clean}
 
 ---
-# 🗣️ Appendix 2: The Raw Debate Transcript
-This section contains the verbatim, unedited transcript of the AI committee debating the merits and risks of the trade, exposing all nuances.
+# 🗣️ 附录 2: 原始辩论记录
+此部分包含AI委员会关于此次交易观点及风险的逐字、未编辑辩论记录，展现所有细节。
 
-## 🐂🐻 Bull vs Bear Committee Debate
-{state.get("investment_debate_state", {}).get("history", "No debate history.")}
+## 🐂🐻 牛熊委员会辩论
+{state.get("investment_debate_state", {}).get("history", "暂无辩论记录。")}
 
-## ⚖️ Risk Management Committee Debate
-{state.get("risk_debate_state", {}).get("history", "No debate history.")}
+## ⚖️ 风险管理委员会辩论
+{state.get("risk_debate_state", {}).get("history", "暂无辩论记录。")}
 """
 
         new_risk_debate_state = {

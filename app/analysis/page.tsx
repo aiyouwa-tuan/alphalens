@@ -643,7 +643,13 @@ export default function AnalysisPage() {
                                             >
                                                 <div className="flex items-center justify-between mb-2">
                                                     <span className="font-bold text-slate-800 tracking-tight text-lg">{h.ticker}</span>
-                                                    <span className="text-xs text-slate-400 font-medium">{new Date(h.timestamp).toLocaleString(undefined, { month: 'short', day: 'numeric' })}</span>
+                                                    <div className="text-xs text-slate-400 font-medium flex flex-col items-end">
+                                                        <span>{new Date(h.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                                                        <span className="text-[10.5px] mt-0.5 text-slate-500">
+                                                            {language === 'zh' ? '开始' : 'Start'} {new Date(h.startTime).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}
+                                                            {h.endTime ? ` | ${language === 'zh' ? '完成' : 'End'} ${new Date(h.endTime).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}` : ` | ${language === 'zh' ? '处理中...' : 'Running...'}`}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                                 <p className="text-xs text-slate-500 line-clamp-2 font-medium leading-relaxed group-hover:text-slate-600 transition-colors">
                                                     {h.markdown?.substring(0, 80) ?? ''}...
