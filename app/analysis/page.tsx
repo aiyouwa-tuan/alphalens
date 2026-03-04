@@ -182,6 +182,7 @@ export default function AnalysisPage() {
     }, []);
 
     const processStream = async (taskId: string, historyId: string, signal: AbortSignal) => {
+        let currentMarkdown = ""; // Track for history saving
         try {
             const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
             const response = await fetch(`${backendUrl}/api/debate/stream/${taskId}`, { signal });
@@ -213,6 +214,7 @@ export default function AnalysisPage() {
                             if (data.node) setActiveNode(data.node);
                             if (data.final_trade_decision) {
                                 const cleaned = cleanContent(data.final_trade_decision);
+                                currentMarkdown = cleaned;
                                 setFinalDecision(cleaned);
                             }
                             if (data.type === "done" || data.type === "error") {
@@ -223,7 +225,7 @@ export default function AnalysisPage() {
                                 setHistory(prev => {
                                     const updated = prev.map(item =>
                                         item.id === historyId
-                                            ? { ...item, status: (data.type === 'error' ? 'error' : 'completed') as 'error' | 'completed', endTime: new Date().toLocaleString('zh-CN', { hour12: false }) }
+                                            ? { ...item, status: (data.type === 'error' ? 'error' : 'completed') as 'error' | 'completed', endTime: new Date().toLocaleString('zh-CN', { hour12: false }), markdown: data.type === 'error' ? item.markdown : currentMarkdown }
                                             : item
                                     );
                                     localStorage.setItem('alphalens_analysis_history', JSON.stringify(updated));
@@ -304,6 +306,9 @@ export default function AnalysisPage() {
         if (item.markdown) {
             setFinalDecision(item.markdown);
             setTicker(item.ticker);
+            setIsAnalyzing(false);
+            setActiveNode(null);
+            setShowThoughts(false);
         }
     };
 
@@ -571,10 +576,26 @@ export default function AnalysisPage() {
                                 </button>
                             )}
                         </form>
-                        <div className="mt-4 text-sm font-medium text-slate-500 flex justify-center w-full">
-                            {language === 'zh'
-                                ? `今日总额度：${limitData.total} 次，已使用：${limitData.used} 次，还剩：${Math.max(0, limitData.total - limitData.used)} 次`
-                                : `Daily Limit: ${limitData.total}, Used: ${limitData.used}, Remaining: ${Math.max(0, limitData.total - limitData.used)}`}
+                        <div className="mt-5 flex justify-center w-full">
+                            <div className="inline-flex items-center justify-center gap-3 px-5 py-2 rounded-full border border-blue-200/50 bg-white/60 backdrop-blur-md shadow-sm">
+                                <span className="text-sm font-semibold text-slate-600">
+                                    {language === 'zh' ? '今日总额度: ' : 'Daily Limit: '}
+                                    <span className="text-slate-900 mx-1">{limitData.total}</span>
+                                    {language === 'zh' ? '次' : ''}
+                                </span>
+                                <div className="w-1.5 h-1.5 rounded-full bg-slate-300"></div>
+                                <span className="text-sm font-semibold text-slate-600">
+                                    {language === 'zh' ? '已使用: ' : 'Used: '}
+                                    <span className="text-slate-900 mx-1">{limitData.used}</span>
+                                    {language === 'zh' ? '次' : ''}
+                                </span>
+                                <div className="w-1.5 h-1.5 rounded-full bg-slate-300"></div>
+                                <span className="text-sm font-semibold text-blue-600">
+                                    {language === 'zh' ? '还剩: ' : 'Remaining: '}
+                                    <span className="text-blue-700 mx-1">{Math.max(0, limitData.total - limitData.used)}</span>
+                                    {language === 'zh' ? '次' : ''}
+                                </span>
+                            </div>
                         </div>
                     </div>
 

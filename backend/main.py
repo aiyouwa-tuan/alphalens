@@ -26,10 +26,31 @@ from tradingagents.default_config import DEFAULT_CONFIG
 # Structure: { "task_id": { "task": asyncio.Task, "events": list, "status": "running"|"completed"|"error", "queues": list_of_asyncio_Queues } }
 ACTIVE_TASKS = {}
 
-# In-memory IP usage tracker
-# Structure: { ip: { "date": "2024-03-04", "count": 2 } }
-IP_ANALYSIS_USAGE = defaultdict(lambda: {"date": "", "count": 0})
+# In-memory IP usage tracker backed by file for serverless deployments
+USAGE_FILE = "/tmp/alphalens_usage.json"
 DAILY_LIMIT = 3
+
+def load_usage():
+    if os.path.exists(USAGE_FILE):
+        try:
+            with open(USAGE_FILE, 'r') as f:
+                data = json.load(f)
+            # Use defaultdict to handle IPs not in the loaded data
+            usage_dict = defaultdict(lambda: {"date": "", "count": 0})
+            usage_dict.update(data)
+            return usage_dict
+        except Exception as e:
+            print(f"Error loading usage: {e}")
+    return defaultdict(lambda: {"date": "", "count": 0})
+
+def save_usage(usage_dict):
+    try:
+        with open(USAGE_FILE, 'w') as f:
+            json.dump(dict(usage_dict), f)
+    except Exception as e:
+        print(f"Error saving usage: {e}")
+
+IP_ANALYSIS_USAGE = load_usage()
 BEIJING_TZ = pytz.timezone('Asia/Shanghai')
 
 def get_beijing_date_str():
@@ -89,6 +110,7 @@ async def get_remaining_limit(request: Request):
     if usage["date"] != current_date:
         usage["date"] = current_date
         usage["count"] = 0
+        save_usage(IP_ANALYSIS_USAGE)
         
     remaining = max(0, DAILY_LIMIT - usage["count"])
     return {"ip": ip, "used": usage["count"], "remaining": remaining, "limit": DAILY_LIMIT}
@@ -107,13 +129,16 @@ async def start_debate(request: Request, body: DebateRequest):
     if usage["date"] != current_date:
         usage["date"] = current_date
         usage["count"] = 0
+        save_usage(IP_ANALYSIS_USAGE)
         
     if usage["count"] >= DAILY_LIMIT:
         print(f"Rate limit exceeded for IP: {ip}. Used: {usage['count']}")
         return {"error": f"今日上限 {DAILY_LIMIT} 次已用完，请明天再来。"}
 
-    # Increment usage count
+    # Increment usage count and save to file
     usage["count"] += 1
+    save_usage(IP_ANALYSIS_USAGE)
+    
     print(f"IP {ip} used analysis {usage['count']} of {DAILY_LIMIT} for {current_date}")
 
     ticker = body.ticker.upper()
