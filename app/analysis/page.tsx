@@ -30,6 +30,11 @@ export interface AnalysisHistoryItem {
     status: 'running' | 'completed' | 'error';
     taskId?: string; // Newly added to connect to background streams
     markdown?: string;
+    market_report?: string;
+    sentiment_report?: string;
+    fundamentals_report?: string;
+    technical_report?: string;
+    news_report?: string;
 }
 
 /**
@@ -225,7 +230,17 @@ export default function AnalysisPage() {
                                 setHistory(prev => {
                                     const updated = prev.map(item =>
                                         item.id === historyId
-                                            ? { ...item, status: (data.type === 'error' ? 'error' : 'completed') as 'error' | 'completed', endTime: new Date().toLocaleString('zh-CN', { hour12: false }), markdown: data.type === 'error' ? item.markdown : currentMarkdown }
+                                            ? {
+                                                ...item,
+                                                status: (data.type === 'error' ? 'error' : 'completed') as 'error' | 'completed',
+                                                endTime: new Date().toLocaleString('zh-CN', { hour12: false }),
+                                                markdown: data.type === 'error' ? item.markdown : currentMarkdown,
+                                                market_report: data.market_report || item.market_report,
+                                                sentiment_report: data.sentiment_report || item.sentiment_report,
+                                                fundamentals_report: data.fundamentals_report || item.fundamentals_report,
+                                                technical_report: data.content || item.technical_report, // Technical might be passed as content
+                                                news_report: data.news_report || item.news_report
+                                            }
                                             : item
                                     );
                                     saveHistory(updated);
@@ -341,6 +356,16 @@ export default function AnalysisPage() {
             setIsAnalyzing(false);
             setActiveNode(null);
             setShowThoughts(false);
+
+            // Re-populate the original raw agent messages for the appendix if they exist
+            const oldMessages: AgentMessage[] = [];
+            if (item.market_report) oldMessages.push({ type: 'update', market_report: item.market_report });
+            if (item.fundamentals_report) oldMessages.push({ type: 'update', fundamentals_report: item.fundamentals_report });
+            if (item.news_report) oldMessages.push({ type: 'update', news_report: item.news_report });
+            if (item.sentiment_report) oldMessages.push({ type: 'update', sentiment_report: item.sentiment_report });
+            if (item.technical_report) oldMessages.push({ type: 'update', content: item.technical_report });
+
+            setMessages(oldMessages);
         }
     };
 
