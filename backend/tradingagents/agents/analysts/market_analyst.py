@@ -71,12 +71,7 @@ Volume-Based Indicators:
         prompt = prompt.partial(current_date=current_date)
         prompt = prompt.partial(ticker=ticker)
 
-        if getattr(llm, "_is_gemini_3", False):
-            # Gemini 3 previews cannot use langchain tools yet due to thoughtSignature error.
-            # We just invoke standard generation so it produces a report without looping.
-            chain = prompt | llm
-        else:
-            chain = prompt | llm.bind_tools(tools)
+        chain = prompt | llm.bind_tools(tools)
 
         result = await chain.ainvoke(state["messages"])
 

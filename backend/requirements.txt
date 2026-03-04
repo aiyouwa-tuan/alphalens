@@ -1,7 +1,7 @@
 fastapi
 uvicorn
 sse-starlette
-langchain-google-genai
+langchain-google-genai>=4.2.1
 langgraph>=0.1.7
 pydantic
 python-dotenv

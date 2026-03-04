@@ -43,10 +43,7 @@ def create_news_analyst(llm):
         prompt = prompt.partial(current_date=current_date)
         prompt = prompt.partial(ticker=ticker)
 
-        if getattr(llm, "_is_gemini_3", False):
-            chain = prompt | llm
-        else:
-            chain = prompt | llm.bind_tools(tools)
+        chain = prompt | llm.bind_tools(tools)
 
         result = await chain.ainvoke(state["messages"])
 

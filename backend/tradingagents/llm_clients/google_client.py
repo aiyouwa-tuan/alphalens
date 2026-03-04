@@ -73,13 +73,7 @@ class GoogleClient(BaseLLMClient):
                 # Gemini 2.5: map to thinking_budget
                 llm_kwargs["thinking_budget"] = -1 if thinking_level == "high" else 0
 
-        # Gemini 3: Langchain doesn't currently inject thought_signature
-        # into function calls, which causes the API to reject the request with 400 Bad Request.
-        # We will flag this instance so that tools are bypassed downstream.
-        is_gemini_3 = "gemini-3" in self.model.lower()
-
         llm = NormalizedChatGoogleGenerativeAI(**llm_kwargs)
-        llm._is_gemini_3 = is_gemini_3
         return llm
 
     def validate_model(self) -> bool:
