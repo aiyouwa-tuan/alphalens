@@ -136,17 +136,26 @@ export default function TopBar() {
 
                         {/* Dropdown Menu */}
                         {showUserMenu && (
-                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-100 py-1 z-50 animate-in fade-in slide-in-from-top-2">
-                                <div className="px-4 py-2 border-b border-slate-50">
-                                    <p className="text-xs text-slate-500 font-medium truncate">{user.email}</p>
+                            <>
+                                {/* Invisible Backdrop to capture clicks outside */}
+                                <div
+                                    className="fixed inset-0 z-40"
+                                    onClick={() => setShowUserMenu(false)}
+                                ></div>
+                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-100 py-1 z-50 animate-in fade-in slide-in-from-top-2">
+                                    <div className="px-4 py-2 border-b border-slate-50">
+                                        <p className="text-xs text-slate-500 font-medium truncate">{user.email}</p>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            handleLogout();
+                                        }}
+                                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 font-medium transition-colors flex items-center gap-2 relative z-50 cursor-pointer"
+                                    >
+                                        Log Out
+                                    </button>
                                 </div>
-                                <button
-                                    onClick={handleLogout}
-                                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 font-medium transition-colors flex items-center gap-2"
-                                >
-                                    Log Out
-                                </button>
-                            </div>
+                            </>
                         )}
                     </div>
                 ) : (
