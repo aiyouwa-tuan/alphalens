@@ -28,6 +28,7 @@ export interface AnalysisHistoryItem {
     timestamp: string;
     endTime?: string;
     status: 'running' | 'completed' | 'error';
+    taskId?: string; // Newly added to connect to background streams
     markdown?: string;
 }
 
@@ -180,15 +181,111 @@ export default function AnalysisPage() {
         fetchLimit();
     }, []);
 
-    // Load history from localStorage on mount to prevent hydration errors
+    const processStream = async (taskId: string, historyId: string, signal: AbortSignal) => {
+        try {
+            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+            const response = await fetch(`${backendUrl}/api/debate/stream/${taskId}`, { signal });
+            if (!response.body) throw new Error("No stream body");
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = "";
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+
+                const chunkStr = decoder.decode(value, { stream: true });
+                buffer += chunkStr;
+
+                const parts = buffer.split(/\r?\n\r?\n/);
+                buffer = parts.pop() || "";
+
+                for (const block of parts) {
+                    const trimmedBlock = block.trim();
+                    if (trimmedBlock.startsWith("data: ")) {
+                        try {
+                            const dataStr = trimmedBlock.replace(/^data:\s*/, "");
+                            const data = JSON.parse(dataStr) as AgentMessage;
+
+                            setMessages((prev) => [...prev, data]);
+
+                            if (data.node) setActiveNode(data.node);
+                            if (data.final_trade_decision) {
+                                const cleaned = cleanContent(data.final_trade_decision);
+                                setFinalDecision(cleaned);
+                            }
+                            if (data.type === "done" || data.type === "error") {
+                                setIsAnalyzing(false);
+                                setActiveNode(null);
+                                fetchLimit();
+
+                                setHistory(prev => {
+                                    const updated = prev.map(item =>
+                                        item.id === historyId
+                                            ? { ...item, status: (data.type === 'error' ? 'error' : 'completed') as 'error' | 'completed', endTime: new Date().toLocaleString('zh-CN', { hour12: false }) }
+                                            : item
+                                    );
+                                    localStorage.setItem('alphalens_analysis_history', JSON.stringify(updated));
+                                    return updated;
+                                });
+                            }
+                        } catch (err) {
+                            console.error("Failed to parse SSE chunk:", trimmedBlock, err);
+                        }
+                    } else if (trimmedBlock.startsWith("{") && trimmedBlock.includes('"error"')) {
+                        try {
+                            const errData = JSON.parse(trimmedBlock);
+                            setMessages(prev => [...prev, { type: "error", message: errData.error }]);
+                            setIsAnalyzing(false);
+                            setActiveNode(null);
+                            fetchLimit();
+
+                            setHistory(prev => {
+                                const updated = prev.map(item =>
+                                    item.id === historyId
+                                        ? { ...item, status: 'error' as const, endTime: new Date().toLocaleString('zh-CN', { hour12: false }) }
+                                        : item
+                                );
+                                localStorage.setItem('alphalens_analysis_history', JSON.stringify(updated));
+                                return updated;
+                            });
+                        } catch (e) {
+                            console.error("Failed parsing error block", e);
+                        }
+                    }
+                }
+            }
+        } catch (e: any) {
+            if (e.name !== 'AbortError') {
+                console.error("Stream reader error:", e);
+            }
+        }
+    };
+
+    // Load history from localStorage on mount and resume any disconnected 'running' tasks
     useEffect(() => {
+        let savedHistory: AnalysisHistoryItem[] = [];
         try {
             const saved = localStorage.getItem('alphalens_analysis_history');
             if (saved) {
-                setHistory(JSON.parse(saved));
+                savedHistory = JSON.parse(saved);
+                setHistory(savedHistory);
             }
         } catch (e) {
             console.error("Failed to parse history from localstorage", e);
+        }
+
+        // Auto-resume background task if we find one in 'running' state
+        const activeTask = savedHistory.find(h => h.status === 'running' && h.taskId);
+        if (activeTask) {
+            console.log("Resuming background task:", activeTask.taskId);
+            setTicker(activeTask.ticker);
+            setIsAnalyzing(true);
+            setMessages([]);
+
+            abortControllerRef.current = new AbortController();
+            processStream(activeTask.taskId!, activeTask.id, abortControllerRef.current.signal);
         }
     }, []);
 
@@ -315,11 +412,8 @@ export default function AnalysisPage() {
         setIsAnalyzing(true);
         setMessages([]);
         setActiveNode(null);
-        setFinalDecision(null); // Reset final decision
-        setShowThoughts(true); // Show thoughts by default
-
-        abortControllerRef.current = new AbortController();
-        const { signal } = abortControllerRef.current;
+        setFinalDecision(null);
+        setShowThoughts(true);
 
         const newHistoryId = Date.now().toString();
 
@@ -333,28 +427,12 @@ export default function AnalysisPage() {
                     const data = await searchRes.json();
                     if (data.results && data.results.length > 0) {
                         resolvedTicker = data.results[0].symbol;
-                        setTicker(resolvedTicker); // Auto-correct the input box showing to the user
+                        setTicker(resolvedTicker);
                     }
                 }
             } catch (searchErr) {
                 console.warn("Failed to resolve ticker via search API:", searchErr);
-                // Non-blocking: If search fails, we continue with the raw input
             }
-
-            // Create new history record
-            const nowTime = new Date().toLocaleString('zh-CN', { hour12: false });
-
-            setHistory(prev => {
-                const updated = [{
-                    id: newHistoryId,
-                    ticker: resolvedTicker,
-                    startTime: nowTime,
-                    timestamp: nowTime,
-                    status: 'running' as const
-                }, ...prev].slice(0, 50);
-                localStorage.setItem('alphalens_analysis_history', JSON.stringify(updated));
-                return updated;
-            });
 
             const payload = {
                 ticker: resolvedTicker,
@@ -364,117 +442,51 @@ export default function AnalysisPage() {
             };
 
             const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
-            const response = await fetch(`${backendUrl}/api/debate`, {
+
+            // 1. Kick off background task
+            const startRes = await fetch(`${backendUrl}/api/debate/start`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-                signal // Attach the abort signal
+                body: JSON.stringify(payload)
             });
 
-            if (!response.body) throw new Error("No response body");
+            if (!startRes.ok) throw new Error("Failed to start task");
 
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = "";
-
-            while (true) {
-                const { value, done } = await reader.read();
-                if (done) break;
-
-                console.log("Received chunk! Length:", value?.length);
-                const chunkStr = decoder.decode(value, { stream: true });
-                console.log("Decoded chunk:", chunkStr.substring(0, 50).replace(/\n/g, '\\n').replace(/\r/g, '\\r'));
-                buffer += chunkStr;
-
-                // Split by double newline (handling both \r\n and \n) but keep the last incomplete part in the buffer
-                const parts = buffer.split(/\r?\n\r?\n/);
-                console.log("Split into parts:", parts.length);
-                buffer = parts.pop() || "";
-
-                for (const block of parts) {
-                    const trimmedBlock = block.trim();
-                    if (trimmedBlock.startsWith("data: ")) {
-                        try {
-                            const dataStr = trimmedBlock.replace(/^data:\s*/, "");
-                            const data = JSON.parse(dataStr) as AgentMessage;
-
-                            setMessages((prev) => [...prev, data]);
-
-                            if (data.node) setActiveNode(data.node);
-                            if (data.final_trade_decision) {
-                                const cleaned = cleanContent(data.final_trade_decision);
-                                setFinalDecision(cleaned);
-                            }
-                            if (data.type === "done" || data.type === "error") {
-                                setIsAnalyzing(false);
-                                setActiveNode(null);
-
-                                // Refresh limit on completion
-                                fetchLimit();
-
-                                // Mark history as completed
-                                setHistory(prev => {
-                                    const updated = prev.map(item =>
-                                        item.id === newHistoryId
-                                            ? { ...item, status: (data.type === 'error' ? 'error' : 'completed') as 'error' | 'completed', endTime: new Date().toLocaleString('zh-CN', { hour12: false }) }
-                                            : item
-                                    );
-                                    localStorage.setItem('alphalens_analysis_history', JSON.stringify(updated));
-                                    return updated;
-                                });
-                            }
-                        } catch (err) {
-                            console.error("Failed to parse SSE chunk:", trimmedBlock, err);
-                        }
-                    } else if (trimmedBlock.startsWith("{") && trimmedBlock.includes('"error"')) {
-                        // Handle raw JSON error responses from backend (e.g. auth failures)
-                        try {
-                            const errData = JSON.parse(trimmedBlock);
-                            setMessages(prev => [...prev, { type: "error", message: errData.error }]);
-                            setIsAnalyzing(false);
-                            setActiveNode(null);
-
-                            // Refresh limit on error
-                            fetchLimit();
-
-                            // Mark history as error
-                            setHistory(prev => {
-                                const updated = prev.map(item =>
-                                    item.id === newHistoryId
-                                        ? { ...item, status: 'error' as const, endTime: new Date().toLocaleString('zh-CN', { hour12: false }) }
-                                        : item
-                                );
-                                localStorage.setItem('alphalens_analysis_history', JSON.stringify(updated));
-                                return updated;
-                            });
-                        } catch (e) {
-                            // ignore partial JSON
-                        }
-                    }
-                }
+            const startData = await startRes.json();
+            if (startData.error) {
+                setMessages([{ type: "error", message: startData.error }]);
+                setIsAnalyzing(false);
+                return;
             }
+
+            const remoteTaskId = startData.task_id;
+
+            // 2. Log to history *after* getting real task id
+            const nowTime = new Date().toLocaleString('zh-CN', { hour12: false });
+            setHistory(prev => {
+                const updated = [{
+                    id: newHistoryId,
+                    taskId: remoteTaskId,
+                    ticker: resolvedTicker,
+                    startTime: nowTime,
+                    timestamp: nowTime,
+                    status: 'running' as const
+                }, ...prev].slice(0, 50);
+                localStorage.setItem('alphalens_analysis_history', JSON.stringify(updated));
+                return updated;
+            });
+
+            // 3. Connect to the stream
+            abortControllerRef.current = new AbortController();
+            await processStream(remoteTaskId, newHistoryId, abortControllerRef.current.signal);
+
         } catch (error: any) {
-            if (error.name === "AbortError") {
-                console.log("Analysis stream aborted by user.");
-                setMessages(prev => [...prev, { type: "error", message: "Analysis canceled by user." }]);
+            if (error.name !== "AbortError") {
+                console.error("Starting Analysis error:", error);
+                setMessages((prev) => [...prev, { type: "error", message: `分析失败: ${error.message}` }]);
                 setIsAnalyzing(false);
                 setActiveNode(null);
 
-                // Mark history as error
-                setHistory(prev => {
-                    const updated = prev.map(item =>
-                        item.id === newHistoryId
-                            ? { ...item, status: 'error' as const, endTime: new Date().toLocaleString('zh-CN', { hour12: false }) }
-                            : item
-                    );
-                    localStorage.setItem('alphalens_analysis_history', JSON.stringify(updated));
-                    return updated;
-                });
-            } else {
-                console.error("Stream error:", error);
-                setIsAnalyzing(false);
-
-                // Mark history as error since a network/CORS error occurred
                 setHistory(prev => {
                     const updated = prev.map(item =>
                         item.id === newHistoryId
@@ -584,153 +596,153 @@ export default function AnalysisPage() {
                     )}
                 </div>
 
-                {/* 3 Overview Cards - (Shown when idle matching Figma bottom half) */}
-                {!isAnalyzing && !finalDecision && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16 max-w-5xl mx-auto">
-                        <div className="bg-white rounded-[20px] p-6 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-                            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center mb-5">
-                                <BrainCircuit className="w-5 h-5 text-blue-600" />
-                            </div>
-                            <h3 className="text-lg font-bold text-slate-900 mb-2">{t("featureCard1Title")}</h3>
-                            <p className="text-slate-500 text-sm leading-relaxed">{t("featureCard1Desc")}</p>
-                        </div>
-                        <div className="bg-white rounded-[20px] p-6 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-                            <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center mb-5">
-                                <TrendingUp className="w-5 h-5 text-emerald-600" />
-                            </div>
-                            <h3 className="text-lg font-bold text-slate-900 mb-2">{t("featureCard2Title")}</h3>
-                            <p className="text-slate-500 text-sm leading-relaxed">{t("featureCard2Desc")}</p>
-                        </div>
-                        <div className="bg-white rounded-[20px] p-6 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-                            <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center mb-5">
-                                <BarChart2 className="w-5 h-5 text-amber-600" />
-                            </div>
-                            <h3 className="text-lg font-bold text-slate-900 mb-2">{t("featureCard3Title")}</h3>
-                            <p className="text-slate-500 text-sm leading-relaxed">{t("featureCard3Desc")}</p>
-                        </div>
-                    </div>
-                )}
+                {/* Grid Layout strictly for active analysis, results, or idle feature cards */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6 max-w-6xl mx-auto">
 
-                {/* Grid Layout strictly for active analysis or results */}
-                {(isAnalyzing || finalDecision) && (
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6 max-w-6xl mx-auto">
-
-                        {/* LEFT COLUMN: HISTORY / WATCHLIST */}
-                        <div className="lg:col-span-3 flex flex-col gap-6 relative">
-                            <div className="bg-white border border-slate-200 rounded-[20px] flex flex-col shadow-sm sticky top-24 w-full overflow-hidden">
-                                <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white z-10">
-                                    <h3 className="text-[15px] font-bold text-slate-800 flex items-center gap-2">
-                                        <History className="w-4 h-4 text-slate-400" />
-                                        {t("recentAnalyses")}
-                                    </h3>
-                                    {history.length > 0 && (
-                                        <button onClick={clearHistory} className="text-xs font-semibold text-slate-400 hover:text-red-500 transition-colors">
-                                            {t("clearHistory")}
-                                        </button>
-                                    )}
-                                </div>
-                                <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/50">
-                                    {history.length === 0 ? (
-                                        <div className="text-center text-slate-400 text-sm mt-10 p-6 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                                            {t("noPastAnalyses")}
-                                        </div>
-                                    ) : (
-                                        history.map((h, i) => (
-                                            <button
-                                                key={i}
-                                                onClick={() => loadHistoryItem(h)}
-                                                className="w-full bg-white border border-slate-200 p-4 rounded-xl text-left hover:border-blue-300 hover:shadow-md transition-all group duration-200"
-                                            >
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <span className="font-bold text-slate-800 tracking-tight text-lg">{h.ticker}</span>
-                                                    <div className="text-xs text-slate-400 font-medium flex flex-col items-end">
-                                                        <span>{new Date(h.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-                                                        <span className="text-[10.5px] mt-0.5 text-slate-500">
-                                                            {language === 'zh' ? '开始' : 'Start'} {new Date(h.startTime).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}
-                                                            {h.endTime ? ` | ${language === 'zh' ? '完成' : 'End'} ${new Date(h.endTime).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}` : ` | ${language === 'zh' ? '处理中...' : 'Running...'}`}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <p className="text-xs text-slate-500 line-clamp-2 font-medium leading-relaxed group-hover:text-slate-600 transition-colors">
-                                                    {h.markdown?.substring(0, 80) ?? ''}...
-                                                </p>
-                                            </button>
-                                        ))
-                                    )}
-                                </div>
+                    {/* LEFT COLUMN: HISTORY / WATCHLIST (Always visible) */}
+                    <div className="lg:col-span-3 flex flex-col gap-6 relative">
+                        <div className="bg-white border border-slate-200 rounded-[20px] flex flex-col shadow-sm sticky top-24 w-full h-[600px] overflow-hidden">
+                            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white z-10">
+                                <h3 className="text-[15px] font-bold text-slate-800 flex items-center gap-2">
+                                    <History className="w-4 h-4 text-slate-400" />
+                                    {t("recentAnalyses")}
+                                </h3>
+                                {history.length > 0 && (
+                                    <button onClick={clearHistory} className="text-xs font-semibold text-slate-400 hover:text-red-500 transition-colors">
+                                        {t("clearHistory")}
+                                    </button>
+                                )}
                             </div>
-                        </div>
-
-                        {/* RIGHT COLUMN: MAIN RESULTS */}
-                        <div className="lg:col-span-9 flex flex-col gap-6">
-
-                            {/* Elegant Progress/Loading State */}
-                            {isAnalyzing && !finalDecision && (
-                                <motion.div
-                                    initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                                    className="bg-white rounded-[24px] border border-blue-100 p-12 shadow-xl shadow-blue-500/5 flex flex-col items-center justify-center min-h-[420px]"
-                                >
-                                    <div className="relative mb-8">
-                                        <div className="absolute inset-0 bg-blue-100 rounded-2xl blur-xl animate-pulse" />
-                                        <div className="w-20 h-20 rounded-2xl bg-[#0066FF] flex items-center justify-center relative z-10 shadow-lg shadow-blue-500/30">
-                                            <Zap className="w-10 h-10 text-white animate-bounce" />
-                                        </div>
+                            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/50">
+                                {history.length === 0 ? (
+                                    <div className="text-center text-slate-400 text-sm mt-10 p-6 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                                        {t("noPastAnalyses")}
                                     </div>
-                                    <h3 className="text-3xl font-bold text-slate-900 mb-4 tracking-tight">
-                                        {t("analyzingLabel")}{ticker}
-                                    </h3>
-                                    <p className="text-slate-500 text-center max-w-sm text-lg font-medium">
-                                        {getUserFriendlyStatus(activeNode, t)}
-                                    </p>
-                                    <div className="w-64 h-2 bg-slate-100 rounded-full mt-10 overflow-hidden relative border border-slate-200/50">
-                                        <motion.div
-                                            initial={{ x: "-100%" }}
-                                            animate={{ x: "200%" }}
-                                            transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
-                                            className="absolute top-0 bottom-0 left-0 w-1/2 bg-[#0066FF] rounded-full shadow-md shadow-blue-500/50"
-                                        />
-                                    </div>
-                                    <p className="mt-6 text-xs text-slate-400 font-semibold tracking-wider uppercase">{t("liveExecutionStatusBadge")}</p>
-                                </motion.div>
-                            )}
-
-                            {/* Final Decision Formatted Document */}
-                            {finalDecision && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                                    className="flex-1 rounded-[20px] bg-white border border-slate-200 shadow-md flex flex-col"
-                                >
-                                    <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50 rounded-t-[20px]">
-                                        <h3 className="text-xl text-slate-900 font-extrabold flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
-                                                <FileText className="w-4 h-4 text-blue-600" />
-                                            </div>
-                                            {t("finalTradingPlan")}
-                                        </h3>
+                                ) : (
+                                    history.map((h, i) => (
                                         <button
-                                            onClick={handleDownloadPDF}
-                                            disabled={isExportingPDF}
-                                            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-blue-600 shadow-sm rounded-xl transition-all text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                                            key={i}
+                                            onClick={() => loadHistoryItem(h)}
+                                            className={`w-full bg-white border ${h.taskId && h.status === 'running' ? 'border-blue-400 shadow-blue-100/50' : 'border-slate-200'} p-4 rounded-xl text-left hover:border-blue-300 hover:shadow-md transition-all group duration-200`}
                                         >
-                                            {isExportingPDF ? (
-                                                <Loader2 className="w-4 h-4 animate-spin" />
-                                            ) : (
-                                                <Download className="w-4 h-4" />
-                                            )}
-                                            {isExportingPDF ? t("exporting") : t("downloadPdf")}
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="font-bold text-slate-800 tracking-tight text-lg">{h.ticker}</span>
+                                                <div className="text-xs text-slate-400 font-medium flex flex-col items-end">
+                                                    <span>{new Date(h.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                                                    <span className="text-[10.5px] mt-0.5 text-slate-500">
+                                                        {language === 'zh' ? '开始' : 'Start'} {new Date(h.startTime).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}
+                                                        {h.endTime ? ` | ${language === 'zh' ? '完成' : 'End'} ${new Date(h.endTime).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}` : ` | ${language === 'zh' ? '处理中...' : 'Running...'}`}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <p className="text-xs text-slate-500 line-clamp-2 font-medium leading-relaxed group-hover:text-slate-600 transition-colors">
+                                                {h.status === 'running'
+                                                    ? <span className="flex items-center gap-1 text-blue-500"><Loader2 className="w-3 h-3 animate-spin" /> {language === 'zh' ? '正在处理分析数据...' : 'Processing analysis...'}</span>
+                                                    : (h.markdown?.substring(0, 80) ?? '...')}
+                                            </p>
                                         </button>
-                                    </div>
-                                    {/* The markdown body */}
-                                    <div ref={pdfContentRef} className="p-8 prose prose-slate max-w-none text-slate-700 bg-white rounded-b-[20px]">
-                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                            {finalDecision}
-                                        </ReactMarkdown>
-                                    </div>
-                                </motion.div>
-                            )}
+                                    ))
+                                )}
+                            </div>
                         </div>
                     </div>
-                )}
+
+                    {/* RIGHT COLUMN: MAIN RESULTS OR FEATURE CARDS */}
+                    <div className="lg:col-span-9 flex flex-col gap-6">
+
+                        {/* 3 Overview Cards - (Shown when idle matching Figma bottom half) */}
+                        {!isAnalyzing && !finalDecision && (
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="bg-white rounded-[20px] p-6 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center mb-5">
+                                        <BrainCircuit className="w-5 h-5 text-blue-600" />
+                                    </div>
+                                    <h3 className="text-lg font-bold text-slate-900 mb-2">{t("featureCard1Title")}</h3>
+                                    <p className="text-slate-500 text-sm leading-relaxed">{t("featureCard1Desc")}</p>
+                                </div>
+                                <div className="bg-white rounded-[20px] p-6 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                                    <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center mb-5">
+                                        <TrendingUp className="w-5 h-5 text-emerald-600" />
+                                    </div>
+                                    <h3 className="text-lg font-bold text-slate-900 mb-2">{t("featureCard2Title")}</h3>
+                                    <p className="text-slate-500 text-sm leading-relaxed">{t("featureCard2Desc")}</p>
+                                </div>
+                                <div className="bg-white rounded-[20px] p-6 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                                    <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center mb-5">
+                                        <BarChart2 className="w-5 h-5 text-amber-600" />
+                                    </div>
+                                    <h3 className="text-lg font-bold text-slate-900 mb-2">{t("featureCard3Title")}</h3>
+                                    <p className="text-slate-500 text-sm leading-relaxed">{t("featureCard3Desc")}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Elegant Progress/Loading State */}
+                        {isAnalyzing && !finalDecision && (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                                className="bg-white rounded-[24px] border border-blue-100 p-12 shadow-xl shadow-blue-500/5 flex flex-col items-center justify-center min-h-[420px]"
+                            >
+                                <div className="relative mb-8">
+                                    <div className="absolute inset-0 bg-blue-100 rounded-2xl blur-xl animate-pulse" />
+                                    <div className="w-20 h-20 rounded-2xl bg-[#0066FF] flex items-center justify-center relative z-10 shadow-lg shadow-blue-500/30">
+                                        <Zap className="w-10 h-10 text-white animate-bounce" />
+                                    </div>
+                                </div>
+                                <h3 className="text-3xl font-bold text-slate-900 mb-4 tracking-tight">
+                                    {t("analyzingLabel")}{ticker}
+                                </h3>
+                                <p className="text-slate-500 text-center max-w-sm text-lg font-medium">
+                                    {getUserFriendlyStatus(activeNode, t)}
+                                </p>
+                                <div className="w-64 h-2 bg-slate-100 rounded-full mt-10 overflow-hidden relative border border-slate-200/50">
+                                    <motion.div
+                                        initial={{ x: "-100%" }}
+                                        animate={{ x: "200%" }}
+                                        transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                                        className="absolute top-0 bottom-0 left-0 w-1/2 bg-[#0066FF] rounded-full shadow-md shadow-blue-500/50"
+                                    />
+                                </div>
+                                <p className="mt-6 text-xs text-slate-400 font-semibold tracking-wider uppercase">{t("liveExecutionStatusBadge")}</p>
+                            </motion.div>
+                        )}
+
+                        {/* Final Decision Formatted Document */}
+                        {finalDecision && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                                className="flex-1 rounded-[20px] bg-white border border-slate-200 shadow-md flex flex-col"
+                            >
+                                <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50 rounded-t-[20px]">
+                                    <h3 className="text-xl text-slate-900 font-extrabold flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                                            <FileText className="w-4 h-4 text-blue-600" />
+                                        </div>
+                                        {t("finalTradingPlan")}
+                                    </h3>
+                                    <button
+                                        onClick={handleDownloadPDF}
+                                        disabled={isExportingPDF}
+                                        className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-blue-600 shadow-sm rounded-xl transition-all text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {isExportingPDF ? (
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                            <Download className="w-4 h-4" />
+                                        )}
+                                        {isExportingPDF ? t("exporting") : t("downloadPdf")}
+                                    </button>
+                                </div>
+                                {/* The markdown body */}
+                                <div ref={pdfContentRef} className="p-8 prose prose-slate max-w-none text-slate-700 bg-white rounded-b-[20px]">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                        {finalDecision}
+                                    </ReactMarkdown>
+                                </div>
+                            </motion.div>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );

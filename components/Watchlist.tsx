@@ -81,7 +81,6 @@ export default function Watchlist() {
         <div className="bg-[var(--card-bg)] border border-[var(--border-subtle)] rounded-lg p-5 flex flex-col h-full">
             <div className="flex justify-between items-center mb-4">
                 <h3 className="font-bold text-[var(--text-secondary)] text-xs uppercase tracking-wider">{t('watchlist')}</h3>
-                <button className="text-xs text-[var(--text-accent)] hover:text-[var(--text-primary)] transition-colors">{t('manage')}</button>
             </div>
 
             {/* Input */}
