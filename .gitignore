@@ -50,3 +50,4 @@ test_graph*
 # Backend
 backend/.venv
 backend/tradingagents/data_cache/
+app-ui/node_modules

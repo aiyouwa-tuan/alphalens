@@ -27,8 +27,10 @@ export const translations = {
         blueChipsTech: "BLUE CHIPS & TECH",
 
         // Watchlist
+        saveChanges: "Save Changes",
         activePositions: "Active Positions",
         manage: "Manage",
+        watchlist: "Watchlist",
         asset: "Asset",
         price: "Price",
         qty: "Qty",
@@ -166,8 +168,10 @@ export const translations = {
         blueChipsTech: "蓝筹科技股",
 
         // Watchlist
+        saveChanges: "保存更改",
         activePositions: "当前持仓",
         manage: "管理",
+        watchlist: "自选股",
         asset: "资产",
         price: "价格",
         qty: "数量",

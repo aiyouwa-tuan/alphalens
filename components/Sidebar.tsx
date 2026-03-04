@@ -49,10 +49,11 @@ const Icons = {
 };
 
 const NavItem = ({ href, Icon, active, label }: { href: string; Icon: any; active: boolean; label: string }) => (
-    <Link href={href} className={clsx(
-        "w-10 h-10 flex items-center justify-center rounded-lg transition-colors mb-4 group relative",
-        active ? "bg-[var(--text-accent)] text-white shadow-lg shadow-blue-500/20" : "text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-white"
-    )}>
+    <Link
+        href={href}
+        className={`group flex items-center gap-3 p-3 rounded-xl transition-all relative ${active ? "bg-[var(--text-accent)] text-white shadow-lg shadow-blue-500/20" : "text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]"
+            }`}
+    >
         <div className="w-5 h-5">
             <Icon />
         </div>

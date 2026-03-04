@@ -56,7 +56,7 @@ export default function AuthCallbackPage() {
     }, [router]);
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[var(--bg-app)] text-white">
+        <div className="min-h-screen flex items-center justify-center bg-[var(--bg-app)] text-[var(--text-primary)]">
             <div className="flex flex-col items-center gap-4">
                 <div className="w-8 h-8 border-2 border-[var(--text-accent)] border-t-transparent rounded-full animate-spin"></div>
                 <p className="text-[var(--text-secondary)]">Completing sign in...</p>

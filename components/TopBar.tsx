@@ -67,14 +67,13 @@ export default function TopBar() {
         <div className="h-[72px] border-b border-slate-200 bg-white flex flex-row items-center justify-between px-6 sticky top-0 z-50">
             {/* Left: Logo */}
             <div className="flex items-center gap-2 min-w-[200px]">
-                <Link href="/" className="flex items-center gap-2">
-                    <div className="w-9 h-9 rounded-[10px] bg-[#0066FF] flex items-center justify-center shadow-md shadow-blue-500/20">
-                        <Zap className="w-5 h-5 text-white fill-white" />
+                <Link href="/dashboard" className="flex items-center gap-3 active:scale-95 transition-transform group">
+                    <div className="w-10 h-10 bg-[var(--text-accent)] rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:shadow-blue-500/50 transition-shadow">
+                        <Zap className="w-5 h-5 text-accent fill-white" />
                     </div>
-                    <div className="flex items-center gap-1.5 ml-1">
-                        <span className="font-bold text-[22px] tracking-tight text-slate-900">Neury<span className="text-[#0066FF]">NX</span></span>
-                        <span className="px-1.5 py-0.5 rounded-[6px] text-[10px] font-bold bg-blue-50 text-[#0066FF] border border-blue-100">AI</span>
-                    </div>
+                    <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[var(--text-primary)] to-[var(--text-secondary)] tracking-tight">
+                        AlphaLens
+                    </span>
                 </Link>
             </div>
 

@@ -150,17 +150,17 @@ export default function NewsPage() {
             {/* Header */}
             <div className="flex justify-between items-center mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold mb-2 text-white">{t('marketHeadlines')}</h1>
+                    <h1 className="text-3xl font-bold mb-2 text-[var(--text-primary)]">{t('marketHeadlines')}</h1>
                     <p className="text-[var(--text-secondary)]">{t('newsSubtitle')}</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <button
                         onClick={() => setLanguage(language === 'en' ? 'zh' : 'en')}
-                        className="px-3 py-2 border border-[var(--border-subtle)] hover:bg-[var(--bg-subtle)] rounded-lg transition-colors text-sm font-semibold text-white"
+                        className="px-3 py-2 border border-[var(--border-subtle)] hover:bg-[var(--bg-subtle)] rounded-lg transition-colors text-sm font-semibold text-[var(--text-primary)]"
                     >
                         {language === 'en' ? 'CN' : 'EN'}
                     </button>
-                    <Link href="/dashboard" className="px-4 py-2 bg-[var(--bg-panel)] border border-[var(--border-subtle)] hover:bg-[var(--bg-subtle)] rounded-lg transition-colors text-sm font-semibold text-white">
+                    <Link href="/dashboard" className="px-4 py-2 bg-[var(--bg-panel)] border border-[var(--border-subtle)] hover:bg-[var(--bg-subtle)] rounded-lg transition-colors text-sm font-semibold text-[var(--text-primary)]">
                         {t('backToDashboard')}
                     </Link>
                 </div>
@@ -175,7 +175,7 @@ export default function NewsPage() {
                             {user && (
                                 <button
                                     onClick={() => setIsManageModalOpen(true)}
-                                    className="text-xs text-[var(--text-accent)] hover:text-white transition-colors font-medium"
+                                    className="text-xs text-[var(--text-accent)] hover:text-[var(--text-primary)] transition-colors font-medium"
                                 >
                                     {t('manage')}
                                 </button>
@@ -188,7 +188,7 @@ export default function NewsPage() {
                                     onClick={() => setSelectedFilter(item.id)}
                                     className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${selectedFilter === item.id
                                         ? 'bg-blue-600 text-white shadow-lg'
-                                        : 'text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] hover:text-white'
+                                        : 'text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]'
                                         }`}
                                 >
                                     {getFilterName(item)}
@@ -231,7 +231,7 @@ export default function NewsPage() {
                                                 {new Date(item.datetime * 1000 || item.pubDate).toLocaleString()}
                                             </span>
                                         </div>
-                                        <h3 className="text-xl font-bold mb-3 text-white group-hover:text-[var(--text-accent)] transition-colors leading-snug">
+                                        <h3 className="text-xl font-bold mb-3 text-[var(--text-primary)] group-hover:text-[var(--text-accent)] transition-colors leading-snug">
                                             {item.headline || item.title}
                                         </h3>
                                         <p className="text-sm text-[var(--text-secondary)] leading-relaxed line-clamp-3">

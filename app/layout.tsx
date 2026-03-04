@@ -21,7 +21,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-[var(--bg-app)] text-white`}>
+      <body className={`${inter.className} bg-[var(--bg-app)] text-[var(--text-primary)]`}>
         <LanguageProvider>
           <div className="flex flex-col min-h-screen">
             <TopBar />

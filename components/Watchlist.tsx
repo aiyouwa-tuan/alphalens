@@ -80,8 +80,8 @@ export default function Watchlist() {
     return (
         <div className="bg-[var(--card-bg)] border border-[var(--border-subtle)] rounded-lg p-5 flex flex-col h-full">
             <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xs font-bold text-[var(--text-muted)] tracking-wider uppercase">{t('activePositions')}</h3>
-                <button className="text-xs text-[var(--text-accent)] hover:text-white transition-colors">{t('manage')}</button>
+                <h3 className="font-bold text-[var(--text-secondary)] text-xs uppercase tracking-wider">{t('watchlist')}</h3>
+                <button className="text-xs text-[var(--text-accent)] hover:text-[var(--text-primary)] transition-colors">{t('manage')}</button>
             </div>
 
             {/* Input */}
@@ -90,13 +90,12 @@ export default function Watchlist() {
                     type="text"
                     value={newSymbol}
                     onChange={(e) => setNewSymbol(e.target.value.toUpperCase())}
-                    placeholder="Symbol"
-                    className="flex-1 bg-[var(--bg-app)] border border-[var(--border-subtle)] rounded px-3 py-1.5 text-sm text-white focus:outline-none focus:border-[var(--text-accent)]"
+                    className="flex-1 bg-[var(--bg-app)] border border-[var(--border-subtle)] rounded px-3 py-1.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--text-accent)]"
                 />
                 <button
                     type="submit"
-                    disabled={adding}
-                    className="bg-[var(--bg-subtle)] text-white px-3 py-1.5 rounded hover:bg-[var(--text-accent)] transition-colors text-sm disabled:opacity-50"
+                    disabled={!newSymbol.trim()}
+                    className="bg-[var(--bg-subtle)] text-[var(--text-primary)] px-3 py-1.5 rounded hover:bg-[var(--text-accent)] hover:text-white transition-colors text-sm disabled:opacity-50"
                 >
                     {adding ? '...' : '+'}
                 </button>
@@ -120,8 +119,11 @@ export default function Watchlist() {
                             items.map((item) => (
                                 <tr key={item.symbol} className="group hover:bg-[var(--bg-surface)] transition-colors border-b border-[var(--border-subtle)] last:border-0 text-sm">
                                     <td className="py-3">
-                                        <div className="flex flex-col">
-                                            <span className="font-bold text-white">{item.symbol}</span>
+                                        <div className="flex justify-between items-center mb-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-bold text-[var(--text-primary)]">{item.symbol}</span>
+                                                <span className="text-xs text-[var(--text-muted)] bg-[var(--bg-subtle)] px-1.5 py-0.5 rounded">US</span>
+                                            </div>
                                             <button
                                                 onClick={() => handleRemove(item.symbol)}
                                                 className="text-[10px] text-[var(--color-danger-text)] text-left hover:underline opacity-0 group-hover:opacity-100 transition-opacity"

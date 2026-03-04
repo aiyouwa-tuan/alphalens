@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
+import { Zap } from 'lucide-react'; // Added Zap import
 
 // Initialize Supabase client (Client-side)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -129,8 +130,14 @@ export default function AuthForm({ initialView = 'login' }: AuthFormProps) {
 
     return (
         <div className="w-full max-w-md p-8 bg-[var(--bg-panel)] rounded-2xl border border-[var(--border-subtle)] shadow-2xl animate-in fade-in zoom-in duration-300">
+            <div className="absolute top-8 left-8 flex items-center gap-3">
+                <div className="w-10 h-10 bg-[var(--text-accent)] rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
+                    <Zap className="w-6 h-6 text-white fill-white" />
+                </div>
+                <h1 className="text-3xl font-bold text-[var(--text-primary)]">AlphaLens</h1>
+            </div>
             <div className="text-center mb-8">
-                <h1 className="text-3xl font-bold text-white mb-2">AlphaLens</h1>
+                <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-2">AlphaLens</h1>
                 <p className="text-[var(--text-secondary)]">
                     {isLogin ? 'Welcome back via Email or Google' : 'Create your secure account'}
                 </p>
@@ -151,7 +158,7 @@ export default function AuthForm({ initialView = 'login' }: AuthFormProps) {
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className={`w-full px-4 py-3 bg-[var(--bg-subtle)] border rounded-lg text-white focus:outline-none focus:ring-2 transition-all
+                        className={`w-full px-4 py-3 bg-[var(--bg-subtle)] border rounded-lg text-[var(--text-primary)] focus:outline-none focus:ring-2 transition-all
                             ${errors.email ? 'border-red-500 focus:ring-red-500/20' : 'border-[var(--border-subtle)] focus:border-[var(--text-accent)] focus:ring-[var(--text-accent)]/20'}
                         `}
                         placeholder="name@example.com"
@@ -166,7 +173,7 @@ export default function AuthForm({ initialView = 'login' }: AuthFormProps) {
                         type="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className={`w-full px-4 py-3 bg-[var(--bg-subtle)] border rounded-lg text-white focus:outline-none focus:ring-2 transition-all
+                        className={`w-full px-4 py-3 bg-[var(--bg-subtle)] border rounded-lg text-[var(--text-primary)] focus:outline-none focus:ring-2 transition-all
                             ${errors.password ? 'border-red-500 focus:ring-red-500/20' : 'border-[var(--border-subtle)] focus:border-[var(--text-accent)] focus:ring-[var(--text-accent)]/20'}
                         `}
                         placeholder="••••••••"
