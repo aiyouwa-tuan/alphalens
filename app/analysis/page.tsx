@@ -410,6 +410,8 @@ export default function AnalysisPage() {
                             max-width: 820px;
                             margin: 0 auto;
                             font-size: 15px;
+                            word-break: break-all;
+                            white-space: pre-wrap;
                         }
                         h1 { font-size: 28px; color: #0f172a; margin-bottom: 32px; border-bottom: 3px solid #0066FF; padding-bottom: 16px; }
                         h2 { font-size: 20px; color: #1e293b; margin-top: 2em; margin-bottom: 0.75em; border-left: 4px solid #0066FF; padding-left: 12px; }
@@ -609,7 +611,7 @@ export default function AnalysisPage() {
                                 className="flex-1 bg-transparent text-slate-900 text-lg focus:outline-none placeholder-slate-400 font-medium h-12"
                                 placeholder={t("enterTicker")}
                                 value={ticker}
-                                onChange={(e) => setTicker(e.target.value.toUpperCase())}
+                                onChange={(e) => setTicker(e.target.value)}
                                 disabled={isAnalyzing}
                                 autoFocus
                             />
@@ -812,7 +814,7 @@ export default function AnalysisPage() {
                                     </button>
                                 </div>
                                 {/* The markdown body */}
-                                <div ref={pdfContentRef} className="p-8 prose prose-slate max-w-none text-slate-700 bg-white rounded-b-[20px]">
+                                <div ref={pdfContentRef} className="p-8 prose prose-slate max-w-none text-slate-700 bg-white rounded-b-[20px] break-words whitespace-pre-wrap">
                                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                         {finalDecision}
                                     </ReactMarkdown>
