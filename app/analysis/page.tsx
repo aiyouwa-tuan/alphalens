@@ -151,6 +151,7 @@ const getUserFriendlyStatus = (node: string | null, t: any) => {
         default: return t("statusProcessing");
     }
 }
+import { supabase } from '@/lib/supabase';
 
 export default function AnalysisPage() {
     const { t, language } = useLanguage();
@@ -183,8 +184,28 @@ export default function AnalysisPage() {
         }
     };
 
+    // On mount: ensure userId cookie is synced from Supabase session, then fetch limit
     useEffect(() => {
-        fetchLimit();
+        const syncAndFetchLimit = async () => {
+            // If Supabase client-side has a session, sync the userId cookie
+            if (supabase) {
+                try {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (session?.user?.id) {
+                        await fetch('/api/auth/sync', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ userId: session.user.id })
+                        });
+                    }
+                } catch (e) {
+                    console.error('Auth sync error:', e);
+                }
+            }
+            // Now fetch the limit (cookie should be fresh)
+            await fetchLimit();
+        };
+        syncAndFetchLimit();
     }, []);
 
     const processStream = async (taskId: string, historyId: string, signal: AbortSignal) => {
