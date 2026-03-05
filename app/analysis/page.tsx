@@ -885,22 +885,79 @@ export default function AnalysisPage() {
 
                         {/* Analysis Progress Pipeline */}
                         {isAnalyzing && !finalDecision && (() => {
-                            const ANALYSIS_STEPS = [
-                                { key: 'market_data_analyst', label: language === 'zh' ? '市场数据分析' : 'Market Data', icon: '📊' },
-                                { key: 'fundamentals_analyst', label: language === 'zh' ? '基本面分析' : 'Fundamentals', icon: '📈' },
-                                { key: 'sentiment_analyst', label: language === 'zh' ? '情绪面分析' : 'Sentiment', icon: '🧠' },
-                                { key: 'technical_analyst', label: language === 'zh' ? '技术面分析' : 'Technical', icon: '📉' },
-                                { key: 'risk_manager', label: language === 'zh' ? '风险评估' : 'Risk Assessment', icon: '🛡️' },
-                                { key: 'portfolio_manager', label: language === 'zh' ? '投资决策' : 'Portfolio Decision', icon: '💼' },
+                            // These match the actual LangGraph node names from the backend
+                            const PHASES = [
+                                {
+                                    id: 'data',
+                                    label: language === 'zh' ? '数据采集与分析' : 'Data Collection & Analysis',
+                                    icon: '📊',
+                                    nodes: ['Market Analyst', 'tools_market', 'Msg Clear Market', 'Social Analyst', 'tools_social', 'Msg Clear Social', 'News Analyst', 'tools_news', 'Msg Clear News', 'Fundamentals Analyst', 'tools_fundamentals', 'Msg Clear Fundamentals'],
+                                },
+                                {
+                                    id: 'debate',
+                                    label: language === 'zh' ? '多空辩论' : 'Bull vs Bear Debate',
+                                    icon: '⚔️',
+                                    nodes: ['Bull Researcher', 'Bear Researcher', 'Research Manager'],
+                                },
+                                {
+                                    id: 'trade',
+                                    label: language === 'zh' ? '交易策略制定' : 'Trading Strategy',
+                                    icon: '📝',
+                                    nodes: ['Trader'],
+                                },
+                                {
+                                    id: 'risk',
+                                    label: language === 'zh' ? '风险评估与决策' : 'Risk Assessment & Decision',
+                                    icon: '🛡️',
+                                    nodes: ['Aggressive Analyst', 'Conservative Analyst', 'Neutral Analyst', 'Risk Judge'],
+                                },
                             ];
 
-                            // Determine completed steps from messages
+                            // Calculate which phase is active based on all seen nodes
                             const seenNodes = new Set(messages.filter(m => m.node).map(m => m.node));
-                            const activeIdx = ANALYSIS_STEPS.findIndex(s => s.key === activeNode);
-                            const progress = activeIdx >= 0 ? Math.round(((activeIdx + 0.5) / ANALYSIS_STEPS.length) * 100) : 5;
+                            let activePhaseIdx = 0;
+                            for (let i = PHASES.length - 1; i >= 0; i--) {
+                                if (PHASES[i].nodes.some(n => seenNodes.has(n))) {
+                                    activePhaseIdx = i;
+                                    break;
+                                }
+                            }
 
-                            // Latest status message
-                            const latestStatus = [...messages].reverse().find(m => m.message)?.message || getUserFriendlyStatus(activeNode, t);
+                            // Progress: which phase are we in? Add sub-progress within the phase
+                            const phaseWeight = 100 / PHASES.length;
+                            const activePhaseNodes = PHASES[activePhaseIdx].nodes;
+                            const seenInPhase = activePhaseNodes.filter(n => seenNodes.has(n)).length;
+                            const subProgress = activePhaseNodes.length > 0 ? seenInPhase / activePhaseNodes.length : 0;
+                            const progress = Math.min(95, Math.round(activePhaseIdx * phaseWeight + subProgress * phaseWeight));
+
+                            // Get the latest content messages for live display (up to 3)
+                            const contentMessages = messages
+                                .filter(m => m.content && m.node && !m.node.startsWith('tools_') && !m.node.startsWith('Msg Clear'))
+                                .slice(-3);
+
+                            // Friendly name for current node
+                            const getNodeLabel = (node: string | null): string => {
+                                if (!node) return language === 'zh' ? '初始化中...' : 'Initializing...';
+                                const map: Record<string, [string, string]> = {
+                                    'Market Analyst': ['市场分析师', 'Market Analyst'],
+                                    'Social Analyst': ['情绪分析师', 'Social Media Analyst'],
+                                    'News Analyst': ['新闻分析师', 'News Analyst'],
+                                    'Fundamentals Analyst': ['基本面分析师', 'Fundamentals Analyst'],
+                                    'Bull Researcher': ['多头研究员', 'Bull Researcher'],
+                                    'Bear Researcher': ['空头研究员', 'Bear Researcher'],
+                                    'Research Manager': ['研究主管', 'Research Manager'],
+                                    'Trader': ['交易员', 'Trader'],
+                                    'Aggressive Analyst': ['激进风控', 'Aggressive Risk Analyst'],
+                                    'Conservative Analyst': ['保守风控', 'Conservative Risk Analyst'],
+                                    'Neutral Analyst': ['中立风控', 'Neutral Risk Analyst'],
+                                    'Risk Judge': ['风控裁判', 'Risk Manager'],
+                                };
+                                const entry = map[node];
+                                if (entry) return language === 'zh' ? entry[0] : entry[1];
+                                if (node.startsWith('tools_')) return language === 'zh' ? '调用数据工具...' : 'Fetching data...';
+                                if (node.startsWith('Msg Clear')) return language === 'zh' ? '整理数据...' : 'Organizing data...';
+                                return node;
+                            };
 
                             return (
                                 <motion.div
@@ -908,8 +965,8 @@ export default function AnalysisPage() {
                                     className="bg-white rounded-[24px] border border-blue-100 shadow-xl shadow-blue-500/5 overflow-hidden"
                                 >
                                     {/* Header */}
-                                    <div className="px-8 pt-8 pb-5 border-b border-slate-100 bg-gradient-to-r from-blue-50/50 to-white">
-                                        <div className="flex items-center justify-between mb-4">
+                                    <div className="px-6 pt-6 pb-4 border-b border-slate-100 bg-gradient-to-r from-blue-50/50 to-white">
+                                        <div className="flex items-center justify-between mb-3">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded-xl bg-[#0066FF] flex items-center justify-center shadow-lg shadow-blue-500/30">
                                                     <Zap className="w-5 h-5 text-white" />
@@ -919,7 +976,7 @@ export default function AnalysisPage() {
                                                         {t("analyzingLabel")}{ticker}
                                                     </h3>
                                                     <p className="text-xs text-slate-400 font-medium">
-                                                        {language === 'zh' ? '四位 AI 分析师正在为您深度分析' : 'AI analysts are working on your request'}
+                                                        {activeNode ? getNodeLabel(activeNode) : (language === 'zh' ? '正在启动分析引擎...' : 'Starting analysis engine...')}
                                                     </p>
                                                 </div>
                                             </div>
@@ -941,55 +998,41 @@ export default function AnalysisPage() {
                                             <motion.div
                                                 initial={{ width: '0%' }}
                                                 animate={{ width: `${progress}%` }}
-                                                transition={{ duration: 0.5, ease: "easeOut" }}
+                                                transition={{ duration: 0.8, ease: "easeOut" }}
                                                 className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full"
                                             />
                                         </div>
                                     </div>
 
-                                    {/* Steps Pipeline */}
-                                    <div className="px-8 py-6">
-                                        <div className="space-y-1">
-                                            {ANALYSIS_STEPS.map((step, idx) => {
-                                                const isCompleted = activeIdx > idx || (seenNodes.has(step.key) && activeNode !== step.key);
-                                                const isActive = activeNode === step.key;
-                                                const isPending = !isCompleted && !isActive;
-
+                                    {/* Phase Steps */}
+                                    <div className="px-6 py-4">
+                                        <div className="flex items-center gap-1">
+                                            {PHASES.map((phase, idx) => {
+                                                const isCompleted = idx < activePhaseIdx;
+                                                const isActive = idx === activePhaseIdx;
                                                 return (
-                                                    <div key={step.key} className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-300 ${isActive ? 'bg-blue-50/80 border border-blue-200' : isCompleted ? 'opacity-70' : 'opacity-40'}`}>
-                                                        {/* Step Icon */}
-                                                        <div className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-base">
+                                                    <div key={phase.id} className="flex-1 flex items-center gap-1">
+                                                        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg flex-1 transition-all duration-300 ${isActive ? 'bg-blue-50 border border-blue-200' : isCompleted ? 'bg-emerald-50/50' : 'opacity-40'}`}>
                                                             {isCompleted ? (
-                                                                <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center">
-                                                                    <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                                                <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                                                                    <svg className="w-3 h-3 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                                                                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                                                                     </svg>
                                                                 </div>
                                                             ) : isActive ? (
-                                                                <div className="w-6 h-6 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
+                                                                <div className="w-5 h-5 rounded-full border-2 border-blue-500 border-t-transparent animate-spin flex-shrink-0" />
                                                             ) : (
-                                                                <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center">
-                                                                    <div className="w-2 h-2 rounded-full bg-slate-300" />
+                                                                <div className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
+                                                                    <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
                                                                 </div>
                                                             )}
+                                                            <span className="text-lg flex-shrink-0">{phase.icon}</span>
+                                                            <span className={`text-[11px] font-semibold leading-tight ${isActive ? 'text-blue-700' : isCompleted ? 'text-emerald-700' : 'text-slate-400'}`}>
+                                                                {phase.label}
+                                                            </span>
                                                         </div>
-
-                                                        {/* Step Label + Emoji */}
-                                                        <span className="text-lg mr-1">{step.icon}</span>
-                                                        <span className={`text-sm font-semibold flex-1 ${isActive ? 'text-blue-700' : isCompleted ? 'text-slate-600' : 'text-slate-400'}`}>
-                                                            {step.label}
-                                                        </span>
-
-                                                        {/* Status badge */}
-                                                        {isCompleted && (
-                                                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                                                                {language === 'zh' ? '完成' : 'Done'}
-                                                            </span>
-                                                        )}
-                                                        {isActive && (
-                                                            <span className="text-[10px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full animate-pulse">
-                                                                {language === 'zh' ? '分析中...' : 'Analyzing...'}
-                                                            </span>
+                                                        {idx < PHASES.length - 1 && (
+                                                            <div className={`w-4 h-px flex-shrink-0 ${isCompleted ? 'bg-emerald-300' : 'bg-slate-200'}`} />
                                                         )}
                                                     </div>
                                                 );
@@ -997,13 +1040,57 @@ export default function AnalysisPage() {
                                         </div>
                                     </div>
 
-                                    {/* Live Status Footer */}
-                                    <div className="px-8 py-4 border-t border-slate-100 bg-slate-50/50">
+                                    {/* Live Discussion Panel */}
+                                    {contentMessages.length > 0 && (
+                                        <div className="px-6 pb-4">
+                                            <div className="bg-slate-50 rounded-xl border border-slate-200/80 overflow-hidden">
+                                                <div className="px-4 py-2 bg-slate-100/80 border-b border-slate-200/50 flex items-center gap-2">
+                                                    <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                                                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                                                        {language === 'zh' ? '实时讨论' : 'Live Discussion'}
+                                                    </span>
+                                                </div>
+                                                <div className="p-4 max-h-[300px] overflow-y-auto space-y-3">
+                                                    {contentMessages.map((msg, idx) => (
+                                                        <div key={idx} className="flex gap-3">
+                                                            <div className="flex-shrink-0 mt-0.5">
+                                                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${msg.node?.includes('Bull') ? 'bg-emerald-500' :
+                                                                        msg.node?.includes('Bear') ? 'bg-red-500' :
+                                                                            msg.node?.includes('Aggressive') ? 'bg-orange-500' :
+                                                                                msg.node?.includes('Conservative') ? 'bg-indigo-500' :
+                                                                                    msg.node?.includes('Neutral') ? 'bg-slate-500' :
+                                                                                        msg.node?.includes('Manager') || msg.node?.includes('Judge') ? 'bg-purple-500' :
+                                                                                            msg.node?.includes('Trader') ? 'bg-amber-500' :
+                                                                                                'bg-blue-500'
+                                                                    }`}>
+                                                                    {msg.node?.charAt(0) || 'A'}
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-[11px] font-bold text-slate-600 mb-0.5">
+                                                                    {getNodeLabel(msg.node || null)}
+                                                                </p>
+                                                                <p className="text-xs text-slate-500 leading-relaxed line-clamp-4 whitespace-pre-wrap">
+                                                                    {typeof msg.content === 'string' ? msg.content.substring(0, 500) : '...'}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Footer Status */}
+                                    <div className="px-6 py-3 border-t border-slate-100 bg-slate-50/50">
                                         <div className="flex items-center gap-2">
                                             <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
                                             <p className="text-xs text-slate-500 font-medium truncate flex-1">
-                                                {latestStatus}
+                                                {activeNode ? `${getNodeLabel(activeNode)} ${language === 'zh' ? '正在工作...' : 'is working...'}` : (language === 'zh' ? '正在初始化...' : 'Initializing...')}
                                             </p>
+                                            <span className="text-[10px] text-slate-400 font-medium">
+                                                {messages.filter(m => m.node).length} {language === 'zh' ? '个事件' : 'events'}
+                                            </span>
                                         </div>
                                     </div>
                                 </motion.div>
