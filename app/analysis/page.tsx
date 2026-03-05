@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { BrainCircuit, ArrowRight, Loader2, Download, Square, BarChart2, FileText, History, Clock, TrendingUp, Zap, Search } from "lucide-react";
+import { BrainCircuit, ArrowRight, Loader2, Download, Square, BarChart2, FileText, History, Clock, TrendingUp, Zap, Search, LogIn } from "lucide-react";
+import { useRouter } from 'next/navigation';
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useLanguage } from '@/components/LanguageProvider';
@@ -153,6 +154,7 @@ const getUserFriendlyStatus = (node: string | null, t: any) => {
 
 export default function AnalysisPage() {
     const { t, language } = useLanguage();
+    const router = useRouter();
     const [ticker, setTicker] = useState("");
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [messages, setMessages] = useState<AgentMessage[]>([]);
@@ -162,20 +164,19 @@ export default function AnalysisPage() {
     const [isExportingPDF, setIsExportingPDF] = useState(false);
     const abortControllerRef = useRef<AbortController | null>(null);
 
-    // Limit State
-    const [limitData, setLimitData] = useState<{ used: number, total: number }>({ used: 0, total: 3 });
+    // Limit State (per-account)
+    const [limitData, setLimitData] = useState<{ loggedIn: boolean, used: number, total: number }>({ loggedIn: false, used: 0, total: 3 });
 
     // History State
     const [history, setHistory] = useState<AnalysisHistoryItem[]>([]);
 
-    // Fetch limits from backend
+    // Fetch per-account limits from Next.js API
     const fetchLimit = async () => {
         try {
-            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
-            const res = await fetch(`${backendUrl}/api/debate/limit`);
+            const res = await fetch('/api/analysis/limit');
             if (res.ok) {
                 const data = await res.json();
-                setLimitData({ used: data.used, total: data.limit });
+                setLimitData({ loggedIn: data.loggedIn, used: data.used, total: data.total });
             }
         } catch (e) {
             console.error("Failed to fetch limit:", e);
@@ -473,6 +474,25 @@ export default function AnalysisPage() {
         e.preventDefault();
         if (!ticker) return;
 
+        // Check login and increment usage
+        if (!limitData.loggedIn) {
+            alert('请先登录后再使用 AI 分析功能。\n点击右上角登录按钮即可登录。');
+            return;
+        }
+
+        try {
+            const limitRes = await fetch('/api/analysis/limit', { method: 'POST' });
+            const limitResult = await limitRes.json();
+            if (!limitRes.ok) {
+                alert(limitResult.error || '分析次数已用完');
+                setLimitData(prev => ({ ...prev, used: limitResult.used ?? prev.used }));
+                return;
+            }
+            setLimitData(prev => ({ ...prev, used: limitResult.used, total: limitResult.total }));
+        } catch (e) {
+            console.error('Limit check failed:', e);
+        }
+
         setIsAnalyzing(true);
         setMessages([]);
         setActiveNode(null);
@@ -627,7 +647,7 @@ export default function AnalysisPage() {
                             ) : (
                                 <button
                                     type="submit"
-                                    disabled={!ticker.trim() || limitData.used >= limitData.total}
+                                    disabled={!ticker.trim() || !limitData.loggedIn || limitData.used >= limitData.total}
                                     className="px-6 py-3 bg-[#0066FF] text-white font-bold rounded-xl hover:bg-blue-700 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-blue-500/20"
                                 >
                                     {t("analyzeNowBtn")}
@@ -636,25 +656,35 @@ export default function AnalysisPage() {
                             )}
                         </form>
                         <div className="mt-5 flex justify-center w-full">
-                            <div className="inline-flex items-center justify-center gap-3 px-5 py-2 rounded-full border border-blue-200/50 bg-white/60 backdrop-blur-md shadow-sm">
-                                <span className="text-sm font-semibold text-slate-600">
-                                    {language === 'zh' ? '今日总额度: ' : 'Daily Limit: '}
-                                    <span className="text-slate-900 mx-1">{limitData.total}</span>
-                                    {language === 'zh' ? '次' : ''}
-                                </span>
-                                <div className="w-1.5 h-1.5 rounded-full bg-slate-300"></div>
-                                <span className="text-sm font-semibold text-slate-600">
-                                    {language === 'zh' ? '已使用: ' : 'Used: '}
-                                    <span className="text-slate-900 mx-1">{limitData.used}</span>
-                                    {language === 'zh' ? '次' : ''}
-                                </span>
-                                <div className="w-1.5 h-1.5 rounded-full bg-slate-300"></div>
-                                <span className="text-sm font-semibold text-blue-600">
-                                    {language === 'zh' ? '还剩: ' : 'Remaining: '}
-                                    <span className="text-blue-700 mx-1">{Math.max(0, limitData.total - limitData.used)}</span>
-                                    {language === 'zh' ? '次' : ''}
-                                </span>
-                            </div>
+                            {!limitData.loggedIn ? (
+                                <button
+                                    onClick={() => router.push('/login')}
+                                    className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full border border-amber-200 bg-amber-50 text-amber-700 font-semibold text-sm hover:bg-amber-100 transition-colors cursor-pointer shadow-sm"
+                                >
+                                    <LogIn className="w-4 h-4" />
+                                    {language === 'zh' ? '请先登录后使用 AI 分析功能' : 'Please log in to use AI analysis'}
+                                </button>
+                            ) : (
+                                <div className="inline-flex items-center justify-center gap-3 px-5 py-2 rounded-full border border-blue-200/50 bg-white/60 backdrop-blur-md shadow-sm">
+                                    <span className="text-sm font-semibold text-slate-600">
+                                        {language === 'zh' ? '今日额度: ' : 'Daily Limit: '}
+                                        <span className="text-slate-900 mx-1">{limitData.total}</span>
+                                        {language === 'zh' ? '次' : ''}
+                                    </span>
+                                    <div className="w-1.5 h-1.5 rounded-full bg-slate-300"></div>
+                                    <span className="text-sm font-semibold text-slate-600">
+                                        {language === 'zh' ? '已使用: ' : 'Used: '}
+                                        <span className="text-slate-900 mx-1">{limitData.used}</span>
+                                        {language === 'zh' ? '次' : ''}
+                                    </span>
+                                    <div className="w-1.5 h-1.5 rounded-full bg-slate-300"></div>
+                                    <span className={`text-sm font-semibold ${limitData.used >= limitData.total ? 'text-red-500' : 'text-blue-600'}`}>
+                                        {language === 'zh' ? '还剩: ' : 'Remaining: '}
+                                        <span className={`mx-1 ${limitData.used >= limitData.total ? 'text-red-600' : 'text-blue-700'}`}>{Math.max(0, limitData.total - limitData.used)}</span>
+                                        {language === 'zh' ? '次' : ''}
+                                    </span>
+                                </div>
+                            )}
                         </div>
                     </div>
 
