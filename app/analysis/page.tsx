@@ -184,28 +184,49 @@ export default function AnalysisPage() {
         }
     };
 
-    // On mount: ensure userId cookie is synced from Supabase session, then fetch limit
+    // On mount: sync userId cookie from Supabase session, then fetch limit
+    // Use onAuthStateChange to reliably detect the session after Supabase restores from localStorage
     useEffect(() => {
-        const syncAndFetchLimit = async () => {
-            // If Supabase client-side has a session, sync the userId cookie
-            if (supabase) {
-                try {
-                    const { data: { session } } = await supabase.auth.getSession();
-                    if (session?.user?.id) {
-                        await fetch('/api/auth/sync', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ userId: session.user.id })
-                        });
-                    }
-                } catch (e) {
-                    console.error('Auth sync error:', e);
-                }
+        let unsubscribe: (() => void) | undefined;
+
+        const doSync = async (userId: string) => {
+            try {
+                await fetch('/api/auth/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId })
+                });
+            } catch (e) {
+                console.error('Auth sync error:', e);
             }
-            // Now fetch the limit (cookie should be fresh)
             await fetchLimit();
         };
-        syncAndFetchLimit();
+
+        if (supabase) {
+            // First try getSession for cached session
+            supabase.auth.getSession().then(({ data: { session } }) => {
+                if (session?.user?.id) {
+                    doSync(session.user.id);
+                } else {
+                    // No cached session yet, wait for auth state change
+                    fetchLimit();
+                }
+            });
+
+            // Also listen for auth state changes (covers async session restoration)
+            const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+                if (session?.user?.id) {
+                    doSync(session.user.id);
+                } else {
+                    fetchLimit();
+                }
+            });
+            unsubscribe = () => subscription.unsubscribe();
+        } else {
+            fetchLimit();
+        }
+
+        return () => { if (unsubscribe) unsubscribe(); };
     }, []);
 
     const processStream = async (taskId: string, historyId: string, signal: AbortSignal) => {
@@ -302,7 +323,7 @@ export default function AnalysisPage() {
         }
     };
 
-    // Load history from database on mount and resume any disconnected 'running' tasks
+    // Load history from database on mount, fix stale 'running' items, and resume if appropriate
     useEffect(() => {
         const loadDbHistory = async () => {
             try {
@@ -318,7 +339,7 @@ export default function AnalysisPage() {
                                 body: JSON.stringify(localHistory)
                             });
                         }
-                        localStorage.removeItem('alphalens_analysis_history'); // Delete it so it doesn't trigger again
+                        localStorage.removeItem('alphalens_analysis_history');
                     } catch (e) {
                         console.error("Migration error:", e);
                     }
@@ -326,19 +347,28 @@ export default function AnalysisPage() {
 
                 const res = await fetch('/api/analysis/history');
                 if (res.ok) {
-                    const savedHistory: AnalysisHistoryItem[] = await res.json();
+                    let savedHistory: AnalysisHistoryItem[] = await res.json();
+
+                    // Fix stale 'running' items: if started > 30 min ago, mark as completed/error
+                    const STALE_THRESHOLD_MS = 30 * 60 * 1000; // 30 minutes
+                    const now = Date.now();
+                    let hasStale = false;
+                    savedHistory = savedHistory.map(h => {
+                        if (h.status === 'running') {
+                            const startMs = new Date(h.startTime).getTime();
+                            if (isNaN(startMs) || (now - startMs) > STALE_THRESHOLD_MS) {
+                                hasStale = true;
+                                return { ...h, status: h.markdown ? 'completed' as const : 'error' as const, endTime: h.endTime || new Date().toLocaleString('zh-CN', { hour12: false }) };
+                            }
+                        }
+                        return h;
+                    });
+
                     setHistory(savedHistory);
 
-                    // Auto-resume background task if we find one in 'running' state
-                    const activeTask = savedHistory.find(h => h.status === 'running' && h.taskId);
-                    if (activeTask) {
-                        console.log("Resuming background task:", activeTask.taskId);
-                        setTicker(activeTask.ticker);
-                        setIsAnalyzing(true);
-                        setMessages([]);
-
-                        abortControllerRef.current = new AbortController();
-                        processStream(activeTask.taskId!, activeTask.id, abortControllerRef.current.signal);
+                    // If we fixed stale items, save them back
+                    if (hasStale) {
+                        saveHistory(savedHistory);
                     }
                 }
             } catch (e) {
@@ -372,12 +402,13 @@ export default function AnalysisPage() {
     };
 
     const loadHistoryItem = (item: AnalysisHistoryItem) => {
+        setTicker(item.ticker);
+        setIsAnalyzing(false);
+        setActiveNode(null);
+        setShowThoughts(false);
+
         if (item.markdown) {
             setFinalDecision(item.markdown);
-            setTicker(item.ticker);
-            setIsAnalyzing(false);
-            setActiveNode(null);
-            setShowThoughts(false);
 
             // Re-populate the original raw agent messages for the appendix if they exist
             const oldMessages: AgentMessage[] = [];
@@ -386,8 +417,14 @@ export default function AnalysisPage() {
             if (item.news_report) oldMessages.push({ type: 'update', news_report: item.news_report });
             if (item.sentiment_report) oldMessages.push({ type: 'update', sentiment_report: item.sentiment_report });
             if (item.technical_report) oldMessages.push({ type: 'update', content: item.technical_report });
-
             setMessages(oldMessages);
+        } else {
+            // No analysis result saved — show a fallback message
+            setFinalDecision(language === 'zh'
+                ? `## ${item.ticker} 分析记录\n\n该分析任务${item.status === 'error' ? '执行异常' : '已结束'}，但未保存到分析结果。\n\n请重新发起分析以获取最新结果。`
+                : `## ${item.ticker} Analysis Record\n\nThis analysis ${item.status === 'error' ? 'encountered an error' : 'has ended'} but no result was saved.\n\nPlease run a new analysis to get the latest results.`
+            );
+            setMessages([]);
         }
     };
 
