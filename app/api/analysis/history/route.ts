@@ -96,6 +96,31 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: error }, { status: 500 });
         }
 
+        // Enforce 10-report-per-account FIFO limit
+        const MAX_REPORTS = 10;
+        try {
+            const identifier = userId ? { column: 'user_id', value: userId } : { column: 'ip_address', value: ip };
+
+            // Get all items for this user ordered by created_at descending
+            const { data: allItems } = await supabase!.from('analysis_history')
+                .select('id')
+                .eq(identifier.column, identifier.value)
+                .order('created_at', { ascending: false });
+
+            if (allItems && allItems.length > MAX_REPORTS) {
+                // Delete items beyond the limit (oldest ones)
+                const idsToDelete = allItems.slice(MAX_REPORTS).map((row: any) => row.id);
+                if (idsToDelete.length > 0) {
+                    await supabase!.from('analysis_history')
+                        .delete()
+                        .in('id', idsToDelete);
+                }
+            }
+        } catch (limitErr) {
+            console.error('FIFO limit cleanup error:', limitErr);
+            // Non-critical, don't fail the request
+        }
+
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Analysis History POST error:', error);

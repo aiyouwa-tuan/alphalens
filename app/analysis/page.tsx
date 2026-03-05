@@ -229,8 +229,9 @@ export default function AnalysisPage() {
         return () => { if (unsubscribe) unsubscribe(); };
     }, []);
 
-    const processStream = async (taskId: string, historyId: string, signal: AbortSignal) => {
+    const processStream = async (taskId: string, historyId: string, streamTicker: string, signal: AbortSignal) => {
         let currentMarkdown = ""; // Track for history saving
+        const currentReports: Record<string, string> = { ticker: streamTicker };
         try {
             const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
             const response = await fetch(`${backendUrl}/api/debate/stream/${taskId}`, { signal });
@@ -265,28 +266,46 @@ export default function AnalysisPage() {
                                 currentMarkdown = cleaned;
                                 setFinalDecision(cleaned);
                             }
+
+                            // Accumulate reports as they arrive
+                            if (data.market_report) currentReports.market_report = data.market_report;
+                            if (data.sentiment_report) currentReports.sentiment_report = data.sentiment_report;
+                            if (data.fundamentals_report) currentReports.fundamentals_report = data.fundamentals_report;
+                            if (data.news_report) currentReports.news_report = data.news_report;
+                            if (data.content) currentReports.technical_report = data.content;
+
                             if (data.type === "done" || data.type === "error") {
                                 setIsAnalyzing(false);
                                 setActiveNode(null);
                                 fetchLimit();
 
+                                // Build the completed history item
+                                const completedItem = {
+                                    id: historyId,
+                                    ticker: currentReports.ticker || '',
+                                    status: (data.type === 'error' ? 'error' : 'completed') as 'error' | 'completed',
+                                    endTime: new Date().toISOString(),
+                                    markdown: data.type === 'error' ? undefined : currentMarkdown,
+                                    market_report: data.market_report || currentReports.market_report,
+                                    sentiment_report: data.sentiment_report || currentReports.sentiment_report,
+                                    fundamentals_report: data.fundamentals_report || currentReports.fundamentals_report,
+                                    technical_report: data.content || currentReports.technical_report,
+                                    news_report: data.news_report || currentReports.news_report,
+                                };
+
+                                // Save directly to database API as a single item update
+                                fetch('/api/analysis/history', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify([completedItem])
+                                }).catch(err => console.error('Failed to save completed history:', err));
+
                                 setHistory(prev => {
                                     const updated = prev.map(item =>
                                         item.id === historyId
-                                            ? {
-                                                ...item,
-                                                status: (data.type === 'error' ? 'error' : 'completed') as 'error' | 'completed',
-                                                endTime: new Date().toLocaleString('zh-CN', { hour12: false }),
-                                                markdown: data.type === 'error' ? item.markdown : currentMarkdown,
-                                                market_report: data.market_report || item.market_report,
-                                                sentiment_report: data.sentiment_report || item.sentiment_report,
-                                                fundamentals_report: data.fundamentals_report || item.fundamentals_report,
-                                                technical_report: data.content || item.technical_report, // Technical might be passed as content
-                                                news_report: data.news_report || item.news_report
-                                            }
+                                            ? { ...item, ...completedItem }
                                             : item
                                     );
-                                    saveHistory(updated);
                                     return updated;
                                 });
                             }
@@ -301,13 +320,24 @@ export default function AnalysisPage() {
                             setActiveNode(null);
                             fetchLimit();
 
+                            const errorItem = {
+                                id: historyId,
+                                status: 'error' as const,
+                                endTime: new Date().toISOString(),
+                            };
+
+                            fetch('/api/analysis/history', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify([errorItem])
+                            }).catch(err => console.error('Failed to save error history:', err));
+
                             setHistory(prev => {
                                 const updated = prev.map(item =>
                                     item.id === historyId
-                                        ? { ...item, status: 'error' as const, endTime: new Date().toLocaleString('zh-CN', { hour12: false }) }
+                                        ? { ...item, ...errorItem }
                                         : item
                                 );
-                                saveHistory(updated);
                                 return updated;
                             });
                         } catch (e) {
@@ -603,24 +633,32 @@ export default function AnalysisPage() {
 
             const remoteTaskId = startData.task_id;
 
-            // 2. Log to history *after* getting real task id
-            const nowTime = new Date().toLocaleString('zh-CN', { hour12: false });
+            // 2. Log to history *after* getting real task id — save to API immediately
+            const nowISO = new Date().toISOString();
+            const newItem: AnalysisHistoryItem = {
+                id: newHistoryId,
+                taskId: remoteTaskId,
+                ticker: resolvedTicker,
+                startTime: nowISO,
+                timestamp: nowISO,
+                status: 'running' as const
+            };
+
+            // Save to API right away so it persists across refreshes
+            fetch('/api/analysis/history', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify([newItem])
+            }).catch(err => console.error('Failed to save initial history:', err));
+
             setHistory(prev => {
-                const updated = [{
-                    id: newHistoryId,
-                    taskId: remoteTaskId,
-                    ticker: resolvedTicker,
-                    startTime: nowTime,
-                    timestamp: nowTime,
-                    status: 'running' as const
-                }, ...prev].slice(0, 50);
-                localStorage.setItem('alphalens_analysis_history', JSON.stringify(updated));
+                const updated = [newItem, ...prev].slice(0, 10);
                 return updated;
             });
 
             // 3. Connect to the stream
             abortControllerRef.current = new AbortController();
-            await processStream(remoteTaskId, newHistoryId, abortControllerRef.current.signal);
+            await processStream(remoteTaskId, newHistoryId, resolvedTicker, abortControllerRef.current.signal);
 
         } catch (error: any) {
             if (error.name !== "AbortError") {
