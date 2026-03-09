@@ -3,38 +3,27 @@
 
 @theme {
   --font-inter: 'Inter', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
 }
 
 :root {
-  /* NeuryNX Light Theme - Institutional Default */
-  --bg-app: #F8FAFC;
-  /* Slate 50 - Main background */
-  --bg-panel: #FFFFFF;
-  /* Pure White - Surface/Cards */
-  --bg-subtle: #F1F5F9;
-  /* Slate 100 - Hover states, subtle panels */
+  /* NeuryNX Terminal Dark Theme */
+  --bg-app: #0B0D11;
+  --bg-panel: #111318;
+  --bg-subtle: #181B22;
+  --bg-hover: #1E2230;
 
-  --border-subtle: #E2E8F0;
-  /* Slate 200 */
-  --border-active: #CBD5E1;
-  /* Slate 300 */
+  --border-subtle: #1E2433;
+  --border-active: #2A3550;
 
-  --text-primary: #0F172A;
-  /* Slate 900 - Headings, robust text */
-  --text-secondary: #475569;
-  /* Slate 600 - Secondary text */
-  --text-muted: #94A3B8;
-  /* Slate 400 - Muted text */
+  --text-primary: #E2E8F0;
+  --text-secondary: #8892A4;
+  --text-muted: #4A5568;
 
-  --text-accent: #3B82F6;
-  /* NeuryNX Bright Blue */
-  --color-success-text: #10B981;
-  /* Emerald Green */
-  --color-danger-text: #EF4444;
-  /* Red 500 */
+  --text-accent: #00D4FF;
+  --color-success-text: #00E676;
+  --color-danger-text: #FF4D4D;
 
-  /* Retain for compatibility if needed */
   --background: var(--bg-app);
   --foreground: var(--text-primary);
 }
@@ -50,10 +39,10 @@ body {
   font-family: var(--font-inter);
 }
 
-/* Custom Scrollbar */
+/* Terminal-style scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {
@@ -61,12 +50,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-subtle);
-  border-radius: 3px;
+  background: var(--border-active);
+  border-radius: 2px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--border-active);
+  background: var(--text-muted);
 }
 
 /* Utilities */
