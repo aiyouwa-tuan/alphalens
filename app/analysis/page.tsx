@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { motion } from "framer-motion";
+import { useState, useRef, useEffect, lazy, Suspense } from "react";
 import { BrainCircuit, ArrowRight, Loader2, Download, Square, BarChart2, FileText, History, Clock, TrendingUp, Zap, Search, LogIn } from "lucide-react";
 import { useRouter } from 'next/navigation';
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+
+// Lazy-load heavy markdown renderer only when final results are shown
+const MarkdownRenderer = lazy(() => import('@/components/MarkdownRenderer'));
 import { useLanguage } from '@/components/LanguageProvider';
 
 type AgentMessage = {
@@ -960,10 +960,7 @@ export default function AnalysisPage() {
                             };
 
                             return (
-                                <motion.div
-                                    initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                                    className="bg-white rounded-[24px] border border-blue-100 shadow-xl shadow-blue-500/5 overflow-hidden"
-                                >
+                                <div className="anim-fade-scale bg-white rounded-[24px] border border-blue-100 shadow-xl shadow-blue-500/5 overflow-hidden">
                                     {/* Header */}
                                     <div className="px-6 pt-6 pb-4 border-b border-slate-100 bg-gradient-to-r from-blue-50/50 to-white">
                                         <div className="flex items-center justify-between mb-3">
@@ -995,11 +992,9 @@ export default function AnalysisPage() {
                                         </div>
                                         {/* Progress Bar */}
                                         <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                                            <motion.div
-                                                initial={{ width: '0%' }}
-                                                animate={{ width: `${progress}%` }}
-                                                transition={{ duration: 0.8, ease: "easeOut" }}
-                                                className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full"
+                                            <div
+                                                style={{ width: `${progress}%` }}
+                                                className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-700 ease-out"
                                             />
                                         </div>
                                     </div>
@@ -1093,16 +1088,13 @@ export default function AnalysisPage() {
                                             </span>
                                         </div>
                                     </div>
-                                </motion.div>
+                                </div>
                             );
                         })()}
 
                         {/* Final Decision Formatted Document */}
                         {finalDecision && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                                className="flex-1 rounded-[20px] bg-white border border-slate-200 shadow-md flex flex-col"
-                            >
+                            <div className="anim-fade-up flex-1 rounded-[20px] bg-white border border-slate-200 shadow-md flex flex-col">
                                 <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50 rounded-t-[20px]">
                                     <h3 className="text-xl text-slate-900 font-extrabold flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
@@ -1125,11 +1117,11 @@ export default function AnalysisPage() {
                                 </div>
                                 {/* The markdown body */}
                                 <div ref={pdfContentRef} className="p-8 prose prose-slate max-w-none text-slate-700 bg-white rounded-b-[20px] break-words whitespace-pre-wrap">
-                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                        {finalDecision}
-                                    </ReactMarkdown>
+                                    <Suspense fallback={<div className="animate-pulse h-40 rounded bg-slate-100" />}>
+                                        <MarkdownRenderer>{finalDecision}</MarkdownRenderer>
+                                    </Suspense>
                                 </div>
-                            </motion.div>
+                            </div>
                         )}
                     </div>
                 </div>

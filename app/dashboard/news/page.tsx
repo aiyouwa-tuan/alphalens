@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/components/LanguageProvider';
 import ManageFiltersModal from '@/components/ManageFiltersModal';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
 
 // Initial default filters
 const DEFAULT_FILTERS = [
@@ -34,31 +34,21 @@ export default function NewsPage() {
 
     // Auth State
     const [user, setUser] = useState<any>(null);
-    let supabase: any = null;
-
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    try {
-        if (supabaseUrl && supabaseKey) {
-            supabase = createClient(supabaseUrl, supabaseKey);
-        }
-    } catch (e) {
-        console.error("Supabase Init Failed:", e);
-    }
 
     useEffect(() => {
-        if (!supabase) return;
+        const client = supabase;
+        if (!client) return;
         const checkUser = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
+            const { data: { session } } = await client.auth.getSession();
             setUser(session?.user || null);
         };
         checkUser();
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
+        const { data: { subscription } } = client.auth.onAuthStateChange((_event: any, session: any) => {
             setUser(session?.user || null);
         });
         return () => subscription.unsubscribe();
-    }, [supabase]);
+    }, []);
 
     // Load filters from localStorage on mount
     useEffect(() => {
