@@ -103,7 +103,7 @@ export default function Dashboard() {
     if (loading) return null; // Or a skeleton
 
     return (
-        <div className="flex flex-col w-full min-h-[calc(100vh-72px)] bg-[#F8FAFC]">
+        <div className="flex flex-col w-full min-h-[calc(100vh-72px)] bg-[var(--bg-app)]">
             <main className="p-4 md:p-6 overflow-y-auto">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-5 auto-rows-min">
 
@@ -136,42 +136,42 @@ export default function Dashboard() {
                     </div>
 
                     {/* --- ROW 2: Market News --- */}
-                    <div className="md:col-span-12 bg-white rounded-[20px] border border-slate-200 overflow-hidden shadow-sm">
+                    <div className="md:col-span-12 bg-[var(--bg-panel)] rounded-[20px] border border-[var(--border-subtle)] overflow-hidden">
                         <NewsFeedWidget />
                     </div>
 
                     {/* --- ROW 3: Holdings Table (Full Width, logged in only) --- */}
                     {isLoggedIn && (
-                        <div className="md:col-span-12 bg-white rounded-[20px] border border-slate-200 overflow-hidden shadow-sm">
-                            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                                <h3 className="font-bold text-slate-900 text-base">{t('activePositions')}</h3>
-                                <button className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors">{t('manage')}</button>
+                        <div className="md:col-span-12 bg-[var(--bg-panel)] rounded-[20px] border border-[var(--border-subtle)] overflow-hidden">
+                            <div className="px-6 py-4 border-b border-[var(--border-subtle)] flex items-center justify-between">
+                                <h3 className="font-bold text-[var(--text-primary)] text-sm font-mono uppercase tracking-wider">{t('activePositions')}</h3>
+                                <button className="text-xs font-semibold text-[var(--text-accent)] hover:opacity-80 transition-opacity">{t('manage')}</button>
                             </div>
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm text-left">
-                                    <thead className="bg-slate-50 text-slate-500 border-b border-slate-100">
+                                    <thead className="bg-[var(--bg-subtle)] text-[var(--text-muted)] border-b border-[var(--border-subtle)]">
                                         <tr>
-                                            <th className="px-6 py-3 font-semibold">{t('asset')}</th>
-                                            <th className="px-6 py-3 font-semibold text-right">{t('price')}</th>
-                                            <th className="px-6 py-3 font-semibold text-right">{t('qty')}</th>
-                                            <th className="px-6 py-3 font-semibold text-right">{t('value')}</th>
-                                            <th className="px-6 py-3 font-semibold text-right">{t('pl')}</th>
+                                            <th className="px-6 py-3 font-mono text-xs uppercase tracking-wider">{t('asset')}</th>
+                                            <th className="px-6 py-3 font-mono text-xs uppercase tracking-wider text-right">{t('price')}</th>
+                                            <th className="px-6 py-3 font-mono text-xs uppercase tracking-wider text-right">{t('qty')}</th>
+                                            <th className="px-6 py-3 font-mono text-xs uppercase tracking-wider text-right">{t('value')}</th>
+                                            <th className="px-6 py-3 font-mono text-xs uppercase tracking-wider text-right">{t('pl')}</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-100">
+                                    <tbody className="divide-y divide-[var(--border-subtle)]">
                                         {holdings.length > 0 ? holdings.map(h => (
-                                            <tr key={h.symbol} className="hover:bg-blue-50/30 transition-colors">
-                                                <td className="px-6 py-3 font-bold text-slate-900">{h.symbol}</td>
-                                                <td className="px-6 py-3 text-right font-mono text-slate-700">${h.currentPrice.toFixed(2)}</td>
-                                                <td className="px-6 py-3 text-right text-slate-600">{h.quantity}</td>
-                                                <td className="px-6 py-3 text-right font-mono font-semibold text-slate-800">${h.marketValue.toLocaleString()}</td>
-                                                <td className={`px-6 py-3 text-right font-semibold ${h.unrealizedPL >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                                            <tr key={h.symbol} className="hover:bg-[var(--bg-subtle)] transition-colors">
+                                                <td className="px-6 py-3 font-bold text-[var(--text-accent)] font-mono">{h.symbol}</td>
+                                                <td className="px-6 py-3 text-right font-mono text-[var(--text-secondary)]">${h.currentPrice.toFixed(2)}</td>
+                                                <td className="px-6 py-3 text-right font-mono text-[var(--text-secondary)]">{h.quantity}</td>
+                                                <td className="px-6 py-3 text-right font-mono font-semibold text-[var(--text-primary)]">${h.marketValue.toLocaleString()}</td>
+                                                <td className={`px-6 py-3 text-right font-mono font-semibold ${h.unrealizedPL >= 0 ? 'text-[var(--color-success-text)]' : 'text-[var(--color-danger-text)]'}`}>
                                                     {h.unrealizedPL >= 0 ? '+' : ''}{h.unrealizedPL.toFixed(2)}
                                                 </td>
                                             </tr>
                                         )) : (
                                             <tr>
-                                                <td colSpan={5} className="px-6 py-8 text-center text-slate-400 font-medium">{t('noPositions')}</td>
+                                                <td colSpan={5} className="px-6 py-8 text-center text-[var(--text-muted)] font-mono text-sm">{t('noPositions')}</td>
                                             </tr>
                                         )}
                                     </tbody>

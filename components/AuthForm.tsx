@@ -129,17 +129,16 @@ export default function AuthForm({ initialView = 'login' }: AuthFormProps) {
     };
 
     return (
-        <div className="w-full max-w-md p-8 bg-[var(--bg-panel)] rounded-2xl border border-[var(--border-subtle)] shadow-2xl animate-in fade-in zoom-in duration-300">
-            <div className="absolute top-8 left-8 flex items-center gap-3">
-                <div className="w-10 h-10 bg-[var(--text-accent)] rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
-                    <Zap className="w-6 h-6 text-white fill-white" />
-                </div>
-                <h1 className="text-3xl font-bold text-[var(--text-primary)]">AlphaLens</h1>
-            </div>
+        <div className="w-full max-w-md p-8 bg-[var(--bg-panel)] rounded-2xl border border-[var(--border-subtle)] shadow-2xl shadow-black/60 animate-in fade-in zoom-in duration-300">
             <div className="text-center mb-8">
-                <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-2">AlphaLens</h1>
-                <p className="text-[var(--text-secondary)]">
-                    {isLogin ? '使用邮箱或 Google 登录' : '创建您的安全账户'}
+                <div className="flex items-center justify-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-[var(--text-accent)] rounded-xl flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                        <Zap className="w-6 h-6 text-[#0B0D11] fill-[#0B0D11]" />
+                    </div>
+                    <h1 className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">AlphaLens</h1>
+                </div>
+                <p className="text-sm font-mono text-[var(--text-muted)] uppercase tracking-widest">
+                    {isLogin ? '// SECURE LOGIN' : '// CREATE ACCOUNT'}
                 </p>
             </div>
 
@@ -197,7 +196,7 @@ export default function AuthForm({ initialView = 'login' }: AuthFormProps) {
                     <div className="w-full border-t border-[var(--border-subtle)]"></div>
                 </div>
                 <div className="relative flex justify-center text-sm">
-                    <span className="px-4 bg-[var(--bg-panel)] text-[var(--text-secondary)]">或者使用</span>
+                    <span className="px-4 bg-[var(--bg-panel)] text-[var(--text-muted)] font-mono text-xs uppercase tracking-widest">或者使用</span>
                 </div>
             </div>
 
@@ -205,7 +204,7 @@ export default function AuthForm({ initialView = 'login' }: AuthFormProps) {
             <button
                 onClick={handleGoogleLogin}
                 type="button"
-                className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-white hover:bg-gray-50 text-gray-900 font-medium rounded-lg transition-colors border border-gray-200"
+                className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-[var(--bg-subtle)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] font-medium rounded-lg transition-colors border border-[var(--border-active)]"
             >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                     <path
