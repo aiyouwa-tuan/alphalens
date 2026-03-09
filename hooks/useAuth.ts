@@ -8,19 +8,22 @@ export function useAuth() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (!supabase) {
+        // Assign to local const so TypeScript can properly narrow the type
+        // inside async closures (supabase is SupabaseClient | null)
+        const client = supabase;
+        if (!client) {
             setLoading(false);
             return;
         }
 
         const checkUser = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
+            const { data: { session } } = await client.auth.getSession();
             setUser(session?.user || null);
             setLoading(false);
         };
         checkUser();
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
+        const { data: { subscription } } = client.auth.onAuthStateChange((_event: any, session: any) => {
             setUser(session?.user || null);
         });
 
@@ -29,8 +32,9 @@ export function useAuth() {
 
     const logout = useCallback(async () => {
         try {
-            if (supabase) {
-                await supabase.auth.signOut();
+            const client = supabase;
+            if (client) {
+                await client.auth.signOut();
             }
             await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
         } catch (e) {
