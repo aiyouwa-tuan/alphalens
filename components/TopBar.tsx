@@ -1,36 +1,20 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLanguage } from '@/components/LanguageProvider';
-import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/useAuth';
 import { clsx } from 'clsx';
 import { LayoutDashboard, Briefcase, LineChart, Bell, Settings, ChevronDown, Zap, Globe, LogOut } from 'lucide-react';
 
 export default function TopBar() {
     const { t, language, setLanguage } = useLanguage();
+    const { user, logout } = useAuth();
     const pathname = usePathname();
 
-    // Auth State
-    const [user, setUser] = useState<any>(null);
     const [showUserMenu, setShowUserMenu] = useState(false);
     const menuRef = React.useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        if (!supabase) return;
-        const client = supabase;
-        const checkUser = async () => {
-            const { data: { session } } = await client.auth.getSession();
-            setUser(session?.user || null);
-        };
-        checkUser();
-
-        const { data: { subscription } } = client.auth.onAuthStateChange((_event: any, session: any) => {
-            setUser(session?.user || null);
-        });
-        return () => subscription.unsubscribe();
-    }, []);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -44,19 +28,10 @@ export default function TopBar() {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [showUserMenu]);
 
-    const handleLogout = useCallback(async () => {
+    const handleLogout = () => {
         setShowUserMenu(false);
-        try {
-            if (supabase) {
-                const client = supabase;
-                await client.auth.signOut();
-            }
-            await fetch('/api/auth/logout', { method: 'POST' }).catch(() => { });
-        } catch (e) {
-            console.error("Logout error:", e);
-        }
-        window.location.reload();
-    }, []);
+        logout();
+    };
 
     const NavItem = ({ href, icon: Icon, label }: { href: string, icon: any, label: string }) => {
         const active = pathname === href || (href === '/analysis' && pathname.startsWith('/analysis'));

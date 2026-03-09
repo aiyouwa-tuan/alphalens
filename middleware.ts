@@ -5,13 +5,13 @@ export function middleware(request: NextRequest) {
     const userId = request.cookies.get('userId')?.value;
     const { pathname } = request.nextUrl;
 
-    // Always redirect root to dashboard (publicly accessible now)
+    // Always redirect root to dashboard (publicly accessible)
     if (pathname === '/') {
         return NextResponse.redirect(new URL('/dashboard', request.url));
     }
 
-    // Redirect authenticated user from Login to Dashboard
-    if (pathname === '/login' && userId) {
+    // Redirect authenticated users away from login/register
+    if ((pathname === '/login' || pathname === '/register') && userId) {
         return NextResponse.redirect(new URL('/dashboard', request.url));
     }
 
@@ -19,5 +19,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-    matcher: ['/dashboard/:path*', '/login', '/'],
+    matcher: ['/', '/login', '/register'],
 };

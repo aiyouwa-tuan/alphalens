@@ -12,19 +12,19 @@ interface MacroQuote {
 }
 
 const ICON_MAP: Record<string, any> = {
-    '^TNX': Shield,        // 10Y Treasury
-    '^VIX': Activity,      // VIX
-    'GC=F': DollarSign,    // Gold
-    'CL=F': Droplets,      // Oil
-    'DX-Y.NYB': BarChart3, // Dollar Index
+    '^TNX': Shield,
+    '^VIX': Activity,
+    'GC=F': DollarSign,
+    'CL=F': Droplets,
+    'DX-Y.NYB': BarChart3,
 };
 
 const COLOR_MAP: Record<string, string> = {
-    '^TNX': 'bg-blue-50 text-blue-600',
-    '^VIX': 'bg-orange-50 text-orange-600',
-    'GC=F': 'bg-amber-50 text-amber-600',
-    'CL=F': 'bg-emerald-50 text-emerald-600',
-    'DX-Y.NYB': 'bg-purple-50 text-purple-600',
+    '^TNX': 'bg-blue-500/10 text-blue-400',
+    '^VIX': 'bg-orange-500/10 text-orange-400',
+    'GC=F': 'bg-amber-500/10 text-amber-400',
+    'CL=F': 'bg-emerald-500/10 text-emerald-400',
+    'DX-Y.NYB': 'bg-purple-500/10 text-purple-400',
 };
 
 export default function MacroWidget() {
@@ -41,61 +41,55 @@ export default function MacroWidget() {
     }, []);
 
     if (loading) return (
-        <div className="w-full h-full bg-white rounded-[20px] border border-slate-200 p-5 shadow-sm flex items-center justify-center">
-            <div className="flex items-center gap-2 text-slate-400 text-sm">
-                <div className="w-4 h-4 border-2 border-slate-300 border-t-transparent rounded-full animate-spin"></div>
-                加载中...
+        <div className="w-full h-full bg-[var(--bg-panel)] rounded-[20px] border border-[var(--border-subtle)] p-5 flex items-center justify-center">
+            <div className="flex items-center gap-2 text-[var(--text-muted)] text-sm font-mono">
+                <div className="w-4 h-4 border-2 border-[var(--text-muted)] border-t-transparent rounded-full animate-spin"></div>
+                LOADING...
             </div>
         </div>
     );
 
     return (
-        <div className="w-full h-full flex flex-col bg-white border border-slate-200 rounded-[20px] shadow-sm overflow-hidden">
-            {/* Header */}
+        <div className="w-full h-full flex flex-col bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-[20px] overflow-hidden">
             <div className="px-5 pt-5 pb-3 flex items-center justify-between">
-                <h3 className="text-xs font-bold text-slate-500 tracking-wider uppercase">{t('macroIndicators')}</h3>
-                <span className="text-[10px] font-medium text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full">实时</span>
+                <h3 className="text-xs font-mono font-bold text-[var(--text-muted)] tracking-wider uppercase">{t('macroIndicators')}</h3>
+                <span className="text-[10px] font-mono text-[var(--color-success-text)] bg-[var(--color-success-text)]/10 px-2 py-0.5 rounded-full">LIVE</span>
             </div>
 
-            {/* Items */}
             <div className="flex-1 flex flex-col px-4 pb-4">
                 {data.map((item, index) => {
                     const IconComponent = ICON_MAP[item.symbol] || BarChart3;
-                    const colorClass = COLOR_MAP[item.symbol] || 'bg-slate-50 text-slate-600';
+                    const colorClass = COLOR_MAP[item.symbol] || 'bg-[var(--bg-subtle)] text-[var(--text-secondary)]';
                     const isPositive = item.regularMarketChangePercent >= 0;
                     const displayName = t(item.symbol as any) !== item.symbol ? t(item.symbol as any) : item.shortName;
 
                     return (
                         <div key={item.symbol}>
                             <div className="flex items-center gap-3 py-2.5 px-1">
-                                {/* Icon */}
                                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${colorClass}`}>
                                     <IconComponent className="w-4 h-4" />
                                 </div>
 
-                                {/* Name */}
                                 <div className="flex-1 min-w-0">
-                                    <span className="text-xs text-slate-500 font-medium truncate block" title={item.shortName}>
+                                    <span className="text-xs text-[var(--text-secondary)] font-medium truncate block" title={item.shortName}>
                                         {displayName}
                                     </span>
                                 </div>
 
-                                {/* Value + Change */}
                                 <div className="flex flex-col items-end flex-shrink-0">
-                                    <span className="text-sm font-bold text-slate-900 tabular-nums">
+                                    <span className="text-sm font-bold font-mono text-[var(--text-primary)] tabular-nums">
                                         {item.regularMarketPrice?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </span>
-                                    <div className={`flex items-center gap-0.5 ${isPositive ? 'text-emerald-600' : 'text-red-500'}`}>
+                                    <div className={`flex items-center gap-0.5 ${isPositive ? 'text-[var(--color-success-text)]' : 'text-[var(--color-danger-text)]'}`}>
                                         {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                                        <span className="text-[11px] font-semibold tabular-nums">
+                                        <span className="text-[11px] font-mono font-semibold tabular-nums">
                                             {isPositive ? '+' : ''}{item.regularMarketChangePercent?.toFixed(2)}%
                                         </span>
                                     </div>
                                 </div>
                             </div>
-                            {/* Divider (except last) */}
                             {index < data.length - 1 && (
-                                <div className="h-px bg-slate-100 mx-1"></div>
+                                <div className="h-px bg-[var(--border-subtle)] mx-1"></div>
                             )}
                         </div>
                     );
@@ -104,4 +98,3 @@ export default function MacroWidget() {
         </div>
     );
 }
-
