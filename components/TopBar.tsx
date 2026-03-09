@@ -1,20 +1,70 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useLanguage } from '@/components/LanguageProvider';
 import { useAuth } from '@/hooks/useAuth';
 import { clsx } from 'clsx';
 import { LayoutDashboard, Briefcase, LineChart, Bell, Settings, ChevronDown, Zap, Globe, LogOut } from 'lucide-react';
 
+// Defined outside TopBar so it's never re-created on TopBar re-renders
+function NavItem({
+    href,
+    icon: Icon,
+    label,
+    active,
+    pending,
+    onClick,
+}: {
+    href: string;
+    icon: any;
+    label: string;
+    active: boolean;
+    pending: boolean;
+    onClick: () => void;
+}) {
+    const isHighlighted = active || pending;
+    return (
+        <Link
+            href={href}
+            onClick={onClick}
+            className={clsx(
+                "flex flex-row items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all duration-150",
+                isHighlighted
+                    ? "bg-[var(--bg-hover)] text-[var(--text-accent)] border border-[var(--border-active)]"
+                    : "text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]"
+            )}
+        >
+            <Icon className={clsx("w-4 h-4", isHighlighted ? "stroke-[2.5]" : "text-[var(--text-muted)]")} />
+            <span>{label}</span>
+        </Link>
+    );
+}
+
 export default function TopBar() {
     const { t, language, setLanguage } = useLanguage();
     const { user, logout } = useAuth();
     const pathname = usePathname();
+    const router = useRouter();
 
+    // Track the tab the user just clicked for immediate visual feedback
+    // before the route actually changes
+    const [pendingPath, setPendingPath] = useState<string | null>(null);
     const [showUserMenu, setShowUserMenu] = useState(false);
     const menuRef = React.useRef<HTMLDivElement>(null);
+
+    // Clear pending state once route has settled
+    useEffect(() => {
+        setPendingPath(null);
+    }, [pathname]);
+
+    // Prefetch all nav routes on mount so navigation is instant
+    useEffect(() => {
+        router.prefetch('/dashboard');
+        router.prefetch('/dashboard/news');
+        router.prefetch('/analysis');
+    }, [router]);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -33,20 +83,12 @@ export default function TopBar() {
         logout();
     };
 
-    const NavItem = ({ href, icon: Icon, label }: { href: string, icon: any, label: string }) => {
-        const active = pathname === href || (href === '/analysis' && pathname.startsWith('/analysis'));
-        return (
-            <Link href={href} className={clsx(
-                "flex flex-row items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200",
-                active
-                    ? "bg-[var(--bg-hover)] text-[var(--text-accent)] border border-[var(--border-active)]"
-                    : "text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]"
-            )}>
-                <Icon className={clsx("w-4 h-4", active ? "stroke-[2.5]" : "text-[var(--text-muted)]")} />
-                <span>{label}</span>
-            </Link>
-        );
-    };
+    const makeClickHandler = useCallback((href: string) => () => {
+        setPendingPath(href);
+    }, []);
+
+    const isActive = (href: string) =>
+        pathname === href || (href === '/analysis' && pathname.startsWith('/analysis'));
 
     return (
         <div className="h-[72px] border-b border-[var(--border-subtle)] bg-[var(--bg-panel)] flex flex-row items-center justify-between px-6 sticky top-0 z-50">
@@ -64,9 +106,30 @@ export default function TopBar() {
 
             {/* Center: Navigation Pills */}
             <nav className="hidden md:flex flex-row items-center gap-2 bg-[var(--bg-subtle)] p-1 rounded-full border border-[var(--border-subtle)]">
-                <NavItem href="/dashboard" icon={LayoutDashboard} label={t('dashboard')} />
-                <NavItem href="/dashboard/news" icon={Globe} label={t('news')} />
-                <NavItem href="/analysis" icon={Briefcase} label={t('analytics')} />
+                <NavItem
+                    href="/dashboard"
+                    icon={LayoutDashboard}
+                    label={t('dashboard')}
+                    active={isActive('/dashboard')}
+                    pending={pendingPath === '/dashboard'}
+                    onClick={makeClickHandler('/dashboard')}
+                />
+                <NavItem
+                    href="/dashboard/news"
+                    icon={Globe}
+                    label={t('news')}
+                    active={isActive('/dashboard/news')}
+                    pending={pendingPath === '/dashboard/news'}
+                    onClick={makeClickHandler('/dashboard/news')}
+                />
+                <NavItem
+                    href="/analysis"
+                    icon={Briefcase}
+                    label={t('analytics')}
+                    active={isActive('/analysis')}
+                    pending={pendingPath === '/analysis'}
+                    onClick={makeClickHandler('/analysis')}
+                />
             </nav>
 
             {/* Right: Actions */}
