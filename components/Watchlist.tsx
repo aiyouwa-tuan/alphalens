@@ -78,7 +78,7 @@ export default function Watchlist() {
     };
 
     return (
-        <div className="bg-[var(--card-bg)] border border-[var(--border-subtle)] rounded-lg p-5 flex flex-col h-full">
+        <div className="bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-lg p-5 flex flex-col h-full">
             <div className="flex justify-between items-center mb-4">
                 <h3 className="font-bold text-[var(--text-secondary)] text-xs uppercase tracking-wider">{t('watchlist')}</h3>
             </div>
@@ -116,7 +116,7 @@ export default function Watchlist() {
                             <tr><td colSpan={3} className="text-center py-4 text-[var(--text-muted)]">Empty</td></tr>
                         ) : (
                             items.map((item) => (
-                                <tr key={item.symbol} className="group hover:bg-[var(--bg-surface)] transition-colors border-b border-[var(--border-subtle)] last:border-0 text-sm">
+                                <tr key={item.symbol} className="group hover:bg-[var(--bg-subtle)] transition-colors border-b border-[var(--border-subtle)] last:border-0 text-sm">
                                     <td className="py-3">
                                         <div className="flex justify-between items-center mb-1">
                                             <div className="flex items-center gap-2">

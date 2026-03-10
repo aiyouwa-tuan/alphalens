@@ -184,8 +184,24 @@ async def start_debate(request: Request, body: DebateRequest):
 
     _push_event({"type": "status", "message": f"Initializing AI Agents to analyze {ticker}..."})
 
+    # Global task timeout in seconds (5 minutes)
+    TASK_TIMEOUT = 300
+
     # Background executor function
     async def graph_executor():
+        try:
+            await asyncio.wait_for(_run_graph(), timeout=TASK_TIMEOUT)
+        except asyncio.TimeoutError:
+            _push_event({"type": "error", "message": f"分析超时（超过 {TASK_TIMEOUT // 60} 分钟），请重试。"})
+            ACTIVE_TASKS[task_id]["status"] = "error"
+        except asyncio.CancelledError:
+            pass
+        finally:
+            for q in ACTIVE_TASKS.get(task_id, {}).get("queues", []):
+                q.put_nowait(None)
+            ACTIVE_TASKS.get(task_id, {})["queues"] = []
+
+    async def _run_graph():
         try:
             # 1. Initialize Graph synchronously in a background thread to prevent blocking FastAPI async loop
             def _init_graph():
@@ -312,13 +328,7 @@ async def start_debate(request: Request, body: DebateRequest):
         except Exception as e:
              _push_event({"type": "error", "message": f"Fatal error: {str(e)}"})
              ACTIVE_TASKS[task_id]["status"] = "error"
-             
-        finally:
-             # Free up queues and set sentinel values to unblock waiting clients
-             for q in ACTIVE_TASKS.get(task_id, {}).get("queues", []):
-                 q.put_nowait(None)
-             ACTIVE_TASKS.get(task_id, {})["queues"] = []
-    
+
     # Launch in background
     task = asyncio.create_task(graph_executor())
     ACTIVE_TASKS[task_id]["task"] = task

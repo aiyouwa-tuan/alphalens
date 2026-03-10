@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/components/LanguageProvider';
 import ManageFiltersModal from '@/components/ManageFiltersModal';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
 
 // Initial default filters
 const DEFAULT_FILTERS = [
@@ -34,31 +34,21 @@ export default function NewsPage() {
 
     // Auth State
     const [user, setUser] = useState<any>(null);
-    let supabase: any = null;
-
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    try {
-        if (supabaseUrl && supabaseKey) {
-            supabase = createClient(supabaseUrl, supabaseKey);
-        }
-    } catch (e) {
-        console.error("Supabase Init Failed:", e);
-    }
 
     useEffect(() => {
-        if (!supabase) return;
+        const client = supabase;
+        if (!client) return;
         const checkUser = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
+            const { data: { session } } = await client.auth.getSession();
             setUser(session?.user || null);
         };
         checkUser();
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
+        const { data: { subscription } } = client.auth.onAuthStateChange((_event: any, session: any) => {
             setUser(session?.user || null);
         });
         return () => subscription.unsubscribe();
-    }, [supabase]);
+    }, []);
 
     // Load filters from localStorage on mount
     useEffect(() => {
@@ -138,7 +128,7 @@ export default function NewsPage() {
     };
 
     return (
-        <div className="p-6 max-w-7xl mx-auto min-h-screen">
+        <div className="p-4 md:p-6 max-w-7xl mx-auto min-h-screen">
             <ManageFiltersModal
                 isOpen={isManageModalOpen}
                 onClose={() => setIsManageModalOpen(false)}
@@ -148,27 +138,53 @@ export default function NewsPage() {
             />
 
             {/* Header */}
-            <div className="flex justify-between items-center mb-8">
+            <div className="flex flex-wrap justify-between items-start gap-3 mb-6 md:mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold mb-2 text-[var(--text-primary)]">{t('marketHeadlines')}</h1>
-                    <p className="text-[var(--text-secondary)]">{t('newsSubtitle')}</p>
+                    <h1 className="text-2xl md:text-3xl font-bold mb-1 md:mb-2 text-[var(--text-primary)]">{t('marketHeadlines')}</h1>
+                    <p className="text-sm md:text-base text-[var(--text-secondary)]">{t('newsSubtitle')}</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 md:gap-3">
                     <button
                         onClick={() => setLanguage(language === 'en' ? 'zh' : 'en')}
                         className="px-3 py-2 border border-[var(--border-subtle)] hover:bg-[var(--bg-subtle)] rounded-lg transition-colors text-sm font-semibold text-[var(--text-primary)]"
                     >
                         {language === 'en' ? 'CN' : 'EN'}
                     </button>
-                    <Link href="/dashboard" className="px-4 py-2 bg-[var(--bg-panel)] border border-[var(--border-subtle)] hover:bg-[var(--bg-subtle)] rounded-lg transition-colors text-sm font-semibold text-[var(--text-primary)]">
+                    <Link href="/dashboard" className="px-3 md:px-4 py-2 bg-[var(--bg-panel)] border border-[var(--border-subtle)] hover:bg-[var(--bg-subtle)] rounded-lg transition-colors text-sm font-semibold text-[var(--text-primary)]">
                         {t('backToDashboard')}
                     </Link>
                 </div>
             </div>
 
+            {/* Mobile: horizontal scrollable filter pills */}
+            <div className="md:hidden mb-4">
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                    {user && (
+                        <button
+                            onClick={() => setIsManageModalOpen(true)}
+                            className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border border-[var(--text-accent)] text-[var(--text-accent)] transition-colors"
+                        >
+                            {t('manage')}
+                        </button>
+                    )}
+                    {filters.map(item => (
+                        <button
+                            key={item.id}
+                            onClick={() => setSelectedFilter(item.id)}
+                            className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap ${selectedFilter === item.id
+                                ? 'bg-blue-600 text-white shadow-lg'
+                                : 'bg-[var(--bg-panel)] border border-[var(--border-subtle)] text-[var(--text-muted)]'
+                            }`}
+                        >
+                            {getFilterName(item)}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
             <div className="flex flex-col md:flex-row gap-8">
-                {/* Sidebar Filter */}
-                <div className="w-full md:w-64 flex-shrink-0">
+                {/* Sidebar Filter (desktop only) */}
+                <div className="hidden md:block w-64 flex-shrink-0">
                     <div className="bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-xl p-4 sticky top-6">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="font-bold text-[var(--text-secondary)] text-xs uppercase tracking-wider">{t('marketFocus')}</h3>

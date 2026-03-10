@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { motion } from "framer-motion";
+import { useState, useRef, useEffect, lazy, Suspense } from "react";
 import { BrainCircuit, ArrowRight, Loader2, Download, Square, BarChart2, FileText, History, Clock, TrendingUp, Zap, Search, LogIn } from "lucide-react";
 import { useRouter } from 'next/navigation';
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+
+// Lazy-load heavy markdown renderer only when final results are shown
+const MarkdownRenderer = lazy(() => import('@/components/MarkdownRenderer'));
 import { useLanguage } from '@/components/LanguageProvider';
 
 type AgentMessage = {
@@ -163,7 +163,9 @@ export default function AnalysisPage() {
     const [finalDecision, setFinalDecision] = useState<string | null>(null); // Changed to state variable
     const [showThoughts, setShowThoughts] = useState(true); // New state variable
     const [isExportingPDF, setIsExportingPDF] = useState(false);
+    const [analysisElapsed, setAnalysisElapsed] = useState(0); // seconds since analysis started
     const abortControllerRef = useRef<AbortController | null>(null);
+    const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     // Limit State (per-account)
     const [limitData, setLimitData] = useState<{ loggedIn: boolean, used: number, total: number }>({ loggedIn: false, used: 0, total: 3 });
@@ -275,7 +277,7 @@ export default function AnalysisPage() {
                             if (data.content) currentReports.technical_report = data.content;
 
                             if (data.type === "done" || data.type === "error") {
-                                setIsAnalyzing(false);
+                                stopAnalyzing();
                                 setActiveNode(null);
                                 fetchLimit();
 
@@ -316,7 +318,7 @@ export default function AnalysisPage() {
                         try {
                             const errData = JSON.parse(trimmedBlock);
                             setMessages(prev => [...prev, { type: "error", message: errData.error }]);
-                            setIsAnalyzing(false);
+                            stopAnalyzing();
                             setActiveNode(null);
                             fetchLimit();
 
@@ -433,7 +435,7 @@ export default function AnalysisPage() {
 
     const loadHistoryItem = (item: AnalysisHistoryItem) => {
         setTicker(item.ticker);
-        setIsAnalyzing(false);
+        stopAnalyzing();
         setActiveNode(null);
         setShowThoughts(false);
 
@@ -549,14 +551,18 @@ export default function AnalysisPage() {
         }
     };
 
+    const stopAnalyzing = () => {
+        setIsAnalyzing(false);
+        if (elapsedTimerRef.current) { clearInterval(elapsedTimerRef.current); elapsedTimerRef.current = null; }
+    };
+
     const handleStop = () => {
         if (abortControllerRef.current) {
             console.log("Aborting current fetch request...");
             abortControllerRef.current.abort();
             abortControllerRef.current = null;
         }
-        // Force the UI elements to stop resolving regardless of backend disconnect success
-        setIsAnalyzing(false);
+        stopAnalyzing();
     };
     const handleAnalyze = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -582,10 +588,13 @@ export default function AnalysisPage() {
         }
 
         setIsAnalyzing(true);
+        setAnalysisElapsed(0);
         setMessages([]);
         setActiveNode(null);
         setFinalDecision(null);
         setShowThoughts(true);
+        if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
+        elapsedTimerRef.current = setInterval(() => setAnalysisElapsed(s => s + 1), 1000);
 
         const newHistoryId = Date.now().toString();
 
@@ -627,7 +636,7 @@ export default function AnalysisPage() {
             const startData = await startRes.json();
             if (startData.error) {
                 setMessages([{ type: "error", message: startData.error }]);
-                setIsAnalyzing(false);
+                stopAnalyzing();
                 return;
             }
 
@@ -664,7 +673,7 @@ export default function AnalysisPage() {
             if (error.name !== "AbortError") {
                 console.error("Starting Analysis error:", error);
                 setMessages((prev) => [...prev, { type: "error", message: `分析失败: ${error.message}` }]);
-                setIsAnalyzing(false);
+                stopAnalyzing();
                 setActiveNode(null);
 
                 setHistory(prev => {
@@ -699,7 +708,7 @@ export default function AnalysisPage() {
             {/* Background Effects (subtle gradients from Figma) */}
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[600px] bg-blue-100/50 blur-[120px] rounded-full pointer-events-none opacity-60"></div>
 
-            <div className="max-w-7xl mx-auto px-6 pt-16 relative z-10">
+            <div className="max-w-7xl mx-auto px-4 md:px-6 pt-8 md:pt-16 relative z-10">
 
                 {/* HERO AREA */}
                 <div className="flex flex-col items-center text-center max-w-3xl mx-auto mb-16">
@@ -708,7 +717,7 @@ export default function AnalysisPage() {
                         {t("analysisHeroLabel")}
                     </div>
 
-                    <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 mb-6 leading-tight">
+                    <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-slate-900 mb-4 md:mb-6 leading-tight">
                         {t("analysisHeroTitle")}
                     </h1>
 
@@ -786,7 +795,7 @@ export default function AnalysisPage() {
 
                     {/* Sub Search row */}
                     {!isAnalyzing && !finalDecision && (
-                        <div className="flex flex-wrap items-center justify-center gap-8 mt-8 text-sm">
+                        <div className="flex flex-wrap items-center justify-center gap-4 md:gap-8 mt-6 md:mt-8 text-sm">
                             <div className="flex items-center gap-2">
                                 <span className="text-slate-400 font-medium mr-1 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Recent:</span>
                                 {["AAPL", "TSLA", "NVDA", "MSFT"].map(tk => (
@@ -807,7 +816,7 @@ export default function AnalysisPage() {
 
                     {/* LEFT COLUMN: HISTORY / WATCHLIST (Always visible) */}
                     <div className="lg:col-span-3 flex flex-col gap-6 relative">
-                        <div className="bg-white border border-slate-200 rounded-[20px] flex flex-col shadow-sm sticky top-24 w-full h-[600px] overflow-hidden">
+                        <div className="bg-white border border-slate-200 rounded-[20px] flex flex-col shadow-sm lg:sticky lg:top-24 w-full h-[280px] lg:h-[600px] overflow-hidden">
                             <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white z-10">
                                 <h3 className="text-[15px] font-bold text-slate-800 flex items-center gap-2">
                                     <History className="w-4 h-4 text-slate-400" />
@@ -960,10 +969,7 @@ export default function AnalysisPage() {
                             };
 
                             return (
-                                <motion.div
-                                    initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                                    className="bg-white rounded-[24px] border border-blue-100 shadow-xl shadow-blue-500/5 overflow-hidden"
-                                >
+                                <div className="anim-fade-scale bg-white rounded-[24px] border border-blue-100 shadow-xl shadow-blue-500/5 overflow-hidden">
                                     {/* Header */}
                                     <div className="px-6 pt-6 pb-4 border-b border-slate-100 bg-gradient-to-r from-blue-50/50 to-white">
                                         <div className="flex items-center justify-between mb-3">
@@ -995,11 +1001,9 @@ export default function AnalysisPage() {
                                         </div>
                                         {/* Progress Bar */}
                                         <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                                            <motion.div
-                                                initial={{ width: '0%' }}
-                                                animate={{ width: `${progress}%` }}
-                                                transition={{ duration: 0.8, ease: "easeOut" }}
-                                                className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full"
+                                            <div
+                                                style={{ width: `${progress}%` }}
+                                                className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-700 ease-out"
                                             />
                                         </div>
                                     </div>
@@ -1071,7 +1075,7 @@ export default function AnalysisPage() {
                                                                     {getNodeLabel(msg.node || null)}
                                                                 </p>
                                                                 <p className="text-xs text-slate-500 leading-relaxed line-clamp-4 whitespace-pre-wrap">
-                                                                    {typeof msg.content === 'string' ? msg.content.substring(0, 500) : '...'}
+                                                                    {cleanContent(msg.content).substring(0, 500) || '...'}
                                                                 </p>
                                                             </div>
                                                         </div>
@@ -1088,21 +1092,19 @@ export default function AnalysisPage() {
                                             <p className="text-xs text-slate-500 font-medium truncate flex-1">
                                                 {activeNode ? `${getNodeLabel(activeNode)} ${language === 'zh' ? '正在工作...' : 'is working...'}` : (language === 'zh' ? '正在初始化...' : 'Initializing...')}
                                             </p>
-                                            <span className="text-[10px] text-slate-400 font-medium">
-                                                {messages.filter(m => m.node).length} {language === 'zh' ? '个事件' : 'events'}
+                                            <span className={`text-[10px] font-medium tabular-nums ${analysisElapsed >= 240 ? 'text-amber-500 font-bold' : 'text-slate-400'}`}>
+                                                {Math.floor(analysisElapsed / 60)}:{String(analysisElapsed % 60).padStart(2, '0')}
+                                                {analysisElapsed >= 240 && (language === 'zh' ? ' 即将超时' : ' timeout soon')}
                                             </span>
                                         </div>
                                     </div>
-                                </motion.div>
+                                </div>
                             );
                         })()}
 
                         {/* Final Decision Formatted Document */}
                         {finalDecision && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                                className="flex-1 rounded-[20px] bg-white border border-slate-200 shadow-md flex flex-col"
-                            >
+                            <div className="anim-fade-up flex-1 rounded-[20px] bg-white border border-slate-200 shadow-md flex flex-col">
                                 <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50 rounded-t-[20px]">
                                     <h3 className="text-xl text-slate-900 font-extrabold flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
@@ -1125,11 +1127,11 @@ export default function AnalysisPage() {
                                 </div>
                                 {/* The markdown body */}
                                 <div ref={pdfContentRef} className="p-8 prose prose-slate max-w-none text-slate-700 bg-white rounded-b-[20px] break-words whitespace-pre-wrap">
-                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                        {finalDecision}
-                                    </ReactMarkdown>
+                                    <Suspense fallback={<div className="animate-pulse h-40 rounded bg-slate-100" />}>
+                                        <MarkdownRenderer>{finalDecision}</MarkdownRenderer>
+                                    </Suspense>
                                 </div>
-                            </motion.div>
+                            </div>
                         )}
                     </div>
                 </div>
