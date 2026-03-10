@@ -53,9 +53,13 @@ class GoogleClient(BaseLLMClient):
                 target_key = "max_output_tokens" if key == "max_tokens" else key
                 llm_kwargs[target_key] = self.kwargs[key]
 
-        # Add robust default retries for Gemini 503 availability issues
+        # Limit retries to avoid hanging for minutes on API failures
         if "max_retries" not in llm_kwargs:
-            llm_kwargs["max_retries"] = 5
+            llm_kwargs["max_retries"] = 2
+
+        # Default per-call timeout: 90 seconds
+        if "timeout" not in llm_kwargs:
+            llm_kwargs["timeout"] = 90
 
         # Map thinking_level to appropriate API param based on model
         # Gemini 3 Pro: low, high

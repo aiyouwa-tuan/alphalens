@@ -163,7 +163,9 @@ export default function AnalysisPage() {
     const [finalDecision, setFinalDecision] = useState<string | null>(null); // Changed to state variable
     const [showThoughts, setShowThoughts] = useState(true); // New state variable
     const [isExportingPDF, setIsExportingPDF] = useState(false);
+    const [analysisElapsed, setAnalysisElapsed] = useState(0); // seconds since analysis started
     const abortControllerRef = useRef<AbortController | null>(null);
+    const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     // Limit State (per-account)
     const [limitData, setLimitData] = useState<{ loggedIn: boolean, used: number, total: number }>({ loggedIn: false, used: 0, total: 3 });
@@ -275,7 +277,7 @@ export default function AnalysisPage() {
                             if (data.content) currentReports.technical_report = data.content;
 
                             if (data.type === "done" || data.type === "error") {
-                                setIsAnalyzing(false);
+                                stopAnalyzing();
                                 setActiveNode(null);
                                 fetchLimit();
 
@@ -316,7 +318,7 @@ export default function AnalysisPage() {
                         try {
                             const errData = JSON.parse(trimmedBlock);
                             setMessages(prev => [...prev, { type: "error", message: errData.error }]);
-                            setIsAnalyzing(false);
+                            stopAnalyzing();
                             setActiveNode(null);
                             fetchLimit();
 
@@ -433,7 +435,7 @@ export default function AnalysisPage() {
 
     const loadHistoryItem = (item: AnalysisHistoryItem) => {
         setTicker(item.ticker);
-        setIsAnalyzing(false);
+        stopAnalyzing();
         setActiveNode(null);
         setShowThoughts(false);
 
@@ -549,14 +551,18 @@ export default function AnalysisPage() {
         }
     };
 
+    const stopAnalyzing = () => {
+        setIsAnalyzing(false);
+        if (elapsedTimerRef.current) { clearInterval(elapsedTimerRef.current); elapsedTimerRef.current = null; }
+    };
+
     const handleStop = () => {
         if (abortControllerRef.current) {
             console.log("Aborting current fetch request...");
             abortControllerRef.current.abort();
             abortControllerRef.current = null;
         }
-        // Force the UI elements to stop resolving regardless of backend disconnect success
-        setIsAnalyzing(false);
+        stopAnalyzing();
     };
     const handleAnalyze = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -582,10 +588,13 @@ export default function AnalysisPage() {
         }
 
         setIsAnalyzing(true);
+        setAnalysisElapsed(0);
         setMessages([]);
         setActiveNode(null);
         setFinalDecision(null);
         setShowThoughts(true);
+        if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
+        elapsedTimerRef.current = setInterval(() => setAnalysisElapsed(s => s + 1), 1000);
 
         const newHistoryId = Date.now().toString();
 
@@ -627,7 +636,7 @@ export default function AnalysisPage() {
             const startData = await startRes.json();
             if (startData.error) {
                 setMessages([{ type: "error", message: startData.error }]);
-                setIsAnalyzing(false);
+                stopAnalyzing();
                 return;
             }
 
@@ -664,7 +673,7 @@ export default function AnalysisPage() {
             if (error.name !== "AbortError") {
                 console.error("Starting Analysis error:", error);
                 setMessages((prev) => [...prev, { type: "error", message: `分析失败: ${error.message}` }]);
-                setIsAnalyzing(false);
+                stopAnalyzing();
                 setActiveNode(null);
 
                 setHistory(prev => {
@@ -1083,8 +1092,9 @@ export default function AnalysisPage() {
                                             <p className="text-xs text-slate-500 font-medium truncate flex-1">
                                                 {activeNode ? `${getNodeLabel(activeNode)} ${language === 'zh' ? '正在工作...' : 'is working...'}` : (language === 'zh' ? '正在初始化...' : 'Initializing...')}
                                             </p>
-                                            <span className="text-[10px] text-slate-400 font-medium">
-                                                {messages.filter(m => m.node).length} {language === 'zh' ? '个事件' : 'events'}
+                                            <span className={`text-[10px] font-medium tabular-nums ${analysisElapsed >= 240 ? 'text-amber-500 font-bold' : 'text-slate-400'}`}>
+                                                {Math.floor(analysisElapsed / 60)}:{String(analysisElapsed % 60).padStart(2, '0')}
+                                                {analysisElapsed >= 240 && (language === 'zh' ? ' 即将超时' : ' timeout soon')}
                                             </span>
                                         </div>
                                     </div>
