@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 // Lazy-load heavy markdown renderer only when final results are shown
 const MarkdownRenderer = lazy(() => import('@/components/MarkdownRenderer'));
 import { useLanguage } from '@/components/LanguageProvider';
+import { supabase } from '@/lib/supabase';
 
 type AgentMessage = {
     type: "status" | "update" | "error" | "done";
@@ -151,7 +152,6 @@ const getUserFriendlyStatus = (node: string | null, t: any) => {
         default: return t("statusProcessing");
     }
 }
-import { supabase } from '@/lib/supabase';
 
 export default function AnalysisPage() {
     const { t, language } = useLanguage();

@@ -8,128 +8,92 @@ import translate from 'google-translate-api-x';
  * Shanghai: 6xxxxx, 9xxxxx → .SS
  * Shenzhen: 0xxxxx, 1xxxxx, 2xxxxx, 3xxxxx → .SZ
  */
-function resolveAShareTicker(query: string): string | null {
+function resolveAShareCode(query: string): string | null {
     const trimmed = query.trim();
     if (/^\d{6}$/.test(trimmed)) {
         const first = trimmed[0];
-        if (first === '6' || first === '9') {
-            return `${trimmed}.SS`;
-        }
-        if (['0', '1', '2', '3'].includes(first)) {
-            return `${trimmed}.SZ`;
-        }
+        if (first === '6' || first === '9') return `${trimmed}.SS`;
+        if (['0', '1', '2', '3'].includes(first)) return `${trimmed}.SZ`;
     }
     return null;
 }
 
+async function searchYahoo(q: string, lang: string): Promise<any[]> {
+    try {
+        const results: any = await yahooFinance.search(q, {
+            quotesCount: 8,
+            newsCount: 0,
+            lang: lang,
+            // @ts-ignore
+            validation: { logErrors: false },
+        });
+        return results?.quotes ?? [];
+    } catch (e: any) {
+        console.error('Yahoo Finance Search Error:', e.message);
+        return [];
+    }
+}
+
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
-    let query = searchParams.get('q');
+    const rawQuery = searchParams.get('q');
     const lang = searchParams.get('lang') || 'en-US';
     const isChinese = lang.startsWith('zh');
 
-    if (!query) {
+    if (!rawQuery) {
         return NextResponse.json({ results: [] });
     }
 
     try {
-        // 1. Check if input is a 6-digit A-share stock code (e.g., "300750", "600519")
-        const aShareSymbol = resolveAShareTicker(query);
-        if (aShareSymbol) {
-            try {
-                const quote = await yahooFinance.quote(aShareSymbol, {}, { validateResult: false } as any);
-                if (quote && quote.symbol) {
-                    const name = (quote as any).longName || (quote as any).shortName || aShareSymbol;
-                    return NextResponse.json({
-                        results: [{
-                            symbol: quote.symbol,
-                            name: name,
-                            type: (quote as any).quoteType || 'EQUITY',
-                            exchange: (quote as any).exchange || ''
-                        }]
-                    });
-                }
-            } catch (e) {
-                console.warn(`Direct A-share lookup failed for ${aShareSymbol}, falling through to search`);
-            }
-        }
+        // 1. If input is a 6-digit A-share code, search with the exchange suffix directly
+        const aShareSymbol = resolveAShareCode(rawQuery);
+        const primaryQuery = aShareSymbol ?? rawQuery;
 
-        // 2. For Chinese text, try searching Yahoo Finance directly (no translation) first
-        //    Yahoo Finance supports Chinese queries well and returns Chinese A-shares
-        let searchQuery = query;
-        let translatedQuery: string | null = null;
+        // 2. For Chinese text, try searching Yahoo Finance directly (no translation) first.
+        //    Yahoo Finance supports Chinese company name searches natively.
+        let quotes = await searchYahoo(primaryQuery, lang);
 
-        if (/[\u4e00-\u9fa5]/.test(query)) {
-            // Try to translate for fallback, but use original first
-            try {
-                const translated = await translate(query, { to: 'en' }) as any;
-                if (translated.text && translated.text !== query) {
-                    translatedQuery = translated.text;
-                    console.log(`Translation ready: ${query} -> ${translatedQuery}`);
-                }
-            } catch (e) {
-                console.warn("Query translation failed:", e);
-            }
-        }
-
-        const trySearch = async (q: string) => {
-            try {
-                const res = await yahooFinance.search(q, {
-                    quotesCount: 8,
-                    newsCount: 0,
-                    lang: lang,
-                    // @ts-ignore
-                    validation: { logErrors: false }
-                }) as any;
-                return res;
-            } catch (e: any) {
-                console.error('Yahoo Finance Search Error:', e.message);
-                return null;
-            }
-        };
-
-        // Try original query first (works well for Chinese company names & codes)
-        let results = await trySearch(searchQuery);
-
-        // If no A-share equity results, try translated query as fallback
-        const hasEquity = results?.quotes?.some((q: any) =>
+        // 3. If no equity found and query had Chinese characters, try English translation as fallback
+        const hasEquity = quotes.some((q: any) =>
             q.quoteType === 'EQUITY' || q.quoteType === 'ETF'
         );
-        if ((!results || !hasEquity) && translatedQuery) {
-            console.log(`No results for "${searchQuery}", trying translated: "${translatedQuery}"`);
-            results = await trySearch(translatedQuery);
+        if (!hasEquity && /[\u4e00-\u9fa5]/.test(rawQuery)) {
+            try {
+                const translated = await translate(rawQuery, { to: 'en' }) as any;
+                if (translated?.text && translated.text !== rawQuery) {
+                    console.log(`Fallback translate: ${rawQuery} -> ${translated.text}`);
+                    const fallbackQuotes = await searchYahoo(translated.text, lang);
+                    if (fallbackQuotes.length > 0) quotes = fallbackQuotes;
+                }
+            } catch (e) {
+                console.warn('Translation fallback failed:', e);
+            }
         }
 
-        if (!results?.quotes) {
-            return NextResponse.json({ results: [] });
-        }
-
-        // Filter valid quotes
-        const quotes = results.quotes.filter((q: any) =>
+        // Filter to valid quote types
+        const filtered = quotes.filter((q: any) =>
             q.quoteType === 'EQUITY' || q.quoteType === 'ETF' || q.quoteType === 'INDEX'
         );
 
-        // Process translations in parallel
-        const formatted = await Promise.all(quotes.map(async (quote: any) => {
-            let name = quote.shortname || quote.longname || quote.symbol;
+        // Process name translations in parallel
+        const formatted = await Promise.all(filtered.map(async (quote: any) => {
+            let name: string = quote.shortname || quote.longname || quote.symbol;
 
-            // If user requested Chinese but name is ASCII, try to translate
+            // Translate ASCII company names to Chinese if user is in Chinese mode
             if (isChinese && name && /^[\x00-\x7F]+$/.test(name) && name !== quote.symbol) {
                 try {
                     const res = await translate(name, { to: 'zh-CN' }) as any;
-                    if (res.text && res.text !== name) {
-                        name = res.text;
-                    }
+                    if (res?.text && res.text !== name) name = res.text;
                 } catch (e) {
-                    console.error(`Translation failed for ${name}:`, e);
+                    // keep original name
                 }
             }
 
             return {
                 symbol: quote.symbol,
-                name: name,
+                name,
                 type: quote.quoteType,
-                exchange: quote.exchange
+                exchange: quote.exchange,
             };
         }));
 
