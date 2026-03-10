@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 // Lazy-load heavy markdown renderer only when final results are shown
 const MarkdownRenderer = lazy(() => import('@/components/MarkdownRenderer'));
 import { useLanguage } from '@/components/LanguageProvider';
+import { supabase } from '@/lib/supabase';
 
 type AgentMessage = {
     type: "status" | "update" | "error" | "done";
@@ -151,7 +152,6 @@ const getUserFriendlyStatus = (node: string | null, t: any) => {
         default: return t("statusProcessing");
     }
 }
-import { supabase } from '@/lib/supabase';
 
 export default function AnalysisPage() {
     const { t, language } = useLanguage();
@@ -622,10 +622,9 @@ export default function AnalysisPage() {
                 api_key: ""
             };
 
-            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
-
-            // 1. Kick off background task
-            const startRes = await fetch(`${backendUrl}/api/debate/start`, {
+            // 1. Kick off background task via server-side proxy.
+            //    The proxy injects the admin token when applicable (token stays server-side).
+            const startRes = await fetch('/api/debate/start', {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)

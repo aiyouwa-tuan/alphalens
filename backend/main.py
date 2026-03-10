@@ -93,6 +93,7 @@ class DebateRequest(BaseModel):
     provider: str = "google" # "google" or "doubao"
     api_key: str = ""        # optional, pass dynamically
     model: str = "gemini-3-pro-preview" # e.g. "ep-202xxx-xxx" for doubao
+    admin_token: str = ""    # set by server-side Next.js proxy for admin sessions
 
 class StopRequest(BaseModel):
     task_id: str
@@ -124,25 +125,46 @@ async def start_debate(request: Request, body: DebateRequest):
     """
     ip = get_client_ip(request)
     current_date = get_beijing_date_str()
-    usage = IP_ANALYSIS_USAGE[ip]
-    
-    # Reset limit if new day
-    if usage["date"] != current_date:
-        usage["date"] = current_date
-        usage["count"] = 0
+
+    # Admin token bypass: if the request carries a valid admin token, skip all IP rate-limiting
+    ADMIN_SECRET_TOKEN = os.environ.get("ADMIN_SECRET_TOKEN", "alphalens-admin-secret-2026")
+    is_admin = bool(body.admin_token and body.admin_token == ADMIN_SECRET_TOKEN)
+
+    if not is_admin:
+        usage = IP_ANALYSIS_USAGE[ip]
+
+        # Reset limit if new day
+        if usage["date"] != current_date:
+            usage["date"] = current_date
+            usage["count"] = 0
+            save_usage(IP_ANALYSIS_USAGE)
+
+        if usage["count"] >= DAILY_LIMIT:
+            print(f"Rate limit exceeded for IP: {ip}. Used: {usage['count']}")
+            return {"error": f"今日上限 {DAILY_LIMIT} 次已用完，请明天再来。"}
+
+        usage["count"] += 1
         save_usage(IP_ANALYSIS_USAGE)
-        
-    if usage["count"] >= DAILY_LIMIT:
-        print(f"Rate limit exceeded for IP: {ip}. Used: {usage['count']}")
-        return {"error": f"今日上限 {DAILY_LIMIT} 次已用完，请明天再来。"}
+        print(f"IP {ip} used analysis {usage['count']} of {DAILY_LIMIT} for {current_date}")
+    else:
+        print(f"Admin request from IP {ip} – rate limit bypassed")
 
-    # Increment usage count and save to file
-    usage["count"] += 1
-    save_usage(IP_ANALYSIS_USAGE)
-    
-    print(f"IP {ip} used analysis {usage['count']} of {DAILY_LIMIT} for {current_date}")
+    raw_ticker = body.ticker.strip()
+    ticker = raw_ticker.upper()
 
-    ticker = body.ticker.upper()
+    # A-share auto-suffix: 6-digit code without exchange suffix
+    # Shanghai: 6xxxxx, 9xxxxx → .SS   Shenzhen: 0xxxxx, 1xxxxx, 2xxxxx, 3xxxxx → .SZ
+    import re as _re
+    if _re.match(r'^\d{6}$', ticker):
+        if ticker[0] in ('6', '9'):
+            ticker = ticker + '.SS'
+        elif ticker[0] in ('0', '1', '2', '3'):
+            ticker = ticker + '.SZ'
+
+    # Reject Chinese-character tickers (search failed to resolve)
+    if _re.search(r'[\u4e00-\u9fa5]', ticker):
+        return {"error": "无法识别股票代码，请输入股票代码（如：300750）或英文名称。"}
+
     current_graph_date = datetime.now().strftime("%Y-%m-%d")
 
     # Configure AlphaLens / TradingAgents
