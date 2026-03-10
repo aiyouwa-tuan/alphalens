@@ -41,13 +41,12 @@ export function useAuth() {
         init();
 
         if (client) {
-            const { data: { subscription } } = client.auth.onAuthStateChange(async (_event: any, session: any) => {
+            const { data: { subscription } } = client.auth.onAuthStateChange((_event: any, session: any) => {
                 if (session?.user) {
                     setUser(session.user);
                 } else {
                     // Supabase signed out — re-check cookie session
-                    const cookieUser = await fetchCookieUser();
-                    setUser(cookieUser);
+                    fetchCookieUser().then(cookieUser => setUser(cookieUser));
                 }
             });
             return () => subscription.unsubscribe();
