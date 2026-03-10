@@ -41,8 +41,8 @@ export async function GET(
                 'X-Accel-Buffering': 'no',
             },
         });
-    } catch (error: any) {
-        if (error.name === 'AbortError') {
+    } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
             return new Response(null, { status: 499 });
         }
         console.error('Stream proxy error:', error);
