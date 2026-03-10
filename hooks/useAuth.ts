@@ -8,26 +8,50 @@ export function useAuth() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Assign to local const so TypeScript can properly narrow the type
-        // inside async closures (supabase is SupabaseClient | null)
         const client = supabase;
-        if (!client) {
-            setLoading(false);
-            return;
-        }
 
-        const checkUser = async () => {
-            const { data: { session } } = await client.auth.getSession();
-            setUser(session?.user || null);
+        const fetchCookieUser = async () => {
+            try {
+                const res = await fetch('/api/auth/me');
+                if (res.ok) {
+                    const data = await res.json();
+                    return data.user || null;
+                }
+            } catch (e) {
+                // ignore
+            }
+            return null;
+        };
+
+        const init = async () => {
+            if (client) {
+                const { data: { session } } = await client.auth.getSession();
+                if (session?.user) {
+                    setUser(session.user);
+                    setLoading(false);
+                    return;
+                }
+            }
+            // No Supabase session — check cookie-based session (e.g. admin login)
+            const cookieUser = await fetchCookieUser();
+            setUser(cookieUser);
             setLoading(false);
         };
-        checkUser();
 
-        const { data: { subscription } } = client.auth.onAuthStateChange((_event: any, session: any) => {
-            setUser(session?.user || null);
-        });
+        init();
 
-        return () => subscription.unsubscribe();
+        if (client) {
+            const { data: { subscription } } = client.auth.onAuthStateChange(async (_event: any, session: any) => {
+                if (session?.user) {
+                    setUser(session.user);
+                } else {
+                    // Supabase signed out — re-check cookie session
+                    const cookieUser = await fetchCookieUser();
+                    setUser(cookieUser);
+                }
+            });
+            return () => subscription.unsubscribe();
+        }
     }, []);
 
     const logout = useCallback(async () => {

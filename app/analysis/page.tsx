@@ -235,8 +235,7 @@ export default function AnalysisPage() {
         let currentMarkdown = ""; // Track for history saving
         const currentReports: Record<string, string> = { ticker: streamTicker };
         try {
-            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
-            const response = await fetch(`${backendUrl}/api/debate/stream/${taskId}`, { signal });
+            const response = await fetch(`/api/debate/stream/${taskId}`, { signal });
             if (!response.body) throw new Error("No stream body");
 
             const reader = response.body.getReader();
