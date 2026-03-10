@@ -142,7 +142,22 @@ async def start_debate(request: Request, body: DebateRequest):
     
     print(f"IP {ip} used analysis {usage['count']} of {DAILY_LIMIT} for {current_date}")
 
-    ticker = body.ticker.upper()
+    raw_ticker = body.ticker.strip()
+    ticker = raw_ticker.upper()
+
+    # A-share auto-suffix: 6-digit code without exchange suffix
+    # Shanghai: 6xxxxx, 9xxxxx → .SS   Shenzhen: 0xxxxx, 1xxxxx, 2xxxxx, 3xxxxx → .SZ
+    import re as _re
+    if _re.match(r'^\d{6}$', ticker):
+        if ticker[0] in ('6', '9'):
+            ticker = ticker + '.SS'
+        elif ticker[0] in ('0', '1', '2', '3'):
+            ticker = ticker + '.SZ'
+
+    # Reject Chinese-character tickers (search failed to resolve)
+    if _re.search(r'[\u4e00-\u9fa5]', ticker):
+        return {"error": "无法识别股票代码，请输入股票代码（如：300750）或英文名称。"}
+
     current_graph_date = datetime.now().strftime("%Y-%m-%d")
 
     # Configure AlphaLens / TradingAgents
