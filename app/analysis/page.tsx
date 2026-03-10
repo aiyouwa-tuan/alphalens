@@ -1066,7 +1066,7 @@ export default function AnalysisPage() {
                                                                     {getNodeLabel(msg.node || null)}
                                                                 </p>
                                                                 <p className="text-xs text-slate-500 leading-relaxed line-clamp-4 whitespace-pre-wrap">
-                                                                    {typeof msg.content === 'string' ? msg.content.substring(0, 500) : '...'}
+                                                                    {cleanContent(msg.content).substring(0, 500) || '...'}
                                                                 </p>
                                                             </div>
                                                         </div>
