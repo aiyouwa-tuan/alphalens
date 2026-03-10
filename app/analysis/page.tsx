@@ -699,7 +699,7 @@ export default function AnalysisPage() {
             {/* Background Effects (subtle gradients from Figma) */}
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[600px] bg-blue-100/50 blur-[120px] rounded-full pointer-events-none opacity-60"></div>
 
-            <div className="max-w-7xl mx-auto px-6 pt-16 relative z-10">
+            <div className="max-w-7xl mx-auto px-4 md:px-6 pt-8 md:pt-16 relative z-10">
 
                 {/* HERO AREA */}
                 <div className="flex flex-col items-center text-center max-w-3xl mx-auto mb-16">
@@ -708,7 +708,7 @@ export default function AnalysisPage() {
                         {t("analysisHeroLabel")}
                     </div>
 
-                    <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 mb-6 leading-tight">
+                    <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-slate-900 mb-4 md:mb-6 leading-tight">
                         {t("analysisHeroTitle")}
                     </h1>
 
@@ -786,7 +786,7 @@ export default function AnalysisPage() {
 
                     {/* Sub Search row */}
                     {!isAnalyzing && !finalDecision && (
-                        <div className="flex flex-wrap items-center justify-center gap-8 mt-8 text-sm">
+                        <div className="flex flex-wrap items-center justify-center gap-4 md:gap-8 mt-6 md:mt-8 text-sm">
                             <div className="flex items-center gap-2">
                                 <span className="text-slate-400 font-medium mr-1 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Recent:</span>
                                 {["AAPL", "TSLA", "NVDA", "MSFT"].map(tk => (
@@ -807,7 +807,7 @@ export default function AnalysisPage() {
 
                     {/* LEFT COLUMN: HISTORY / WATCHLIST (Always visible) */}
                     <div className="lg:col-span-3 flex flex-col gap-6 relative">
-                        <div className="bg-white border border-slate-200 rounded-[20px] flex flex-col shadow-sm sticky top-24 w-full h-[600px] overflow-hidden">
+                        <div className="bg-white border border-slate-200 rounded-[20px] flex flex-col shadow-sm lg:sticky lg:top-24 w-full h-[280px] lg:h-[600px] overflow-hidden">
                             <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white z-10">
                                 <h3 className="text-[15px] font-bold text-slate-800 flex items-center gap-2">
                                     <History className="w-4 h-4 text-slate-400" />

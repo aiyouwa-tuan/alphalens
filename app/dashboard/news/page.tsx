@@ -128,7 +128,7 @@ export default function NewsPage() {
     };
 
     return (
-        <div className="p-6 max-w-7xl mx-auto min-h-screen">
+        <div className="p-4 md:p-6 max-w-7xl mx-auto min-h-screen">
             <ManageFiltersModal
                 isOpen={isManageModalOpen}
                 onClose={() => setIsManageModalOpen(false)}
@@ -138,27 +138,53 @@ export default function NewsPage() {
             />
 
             {/* Header */}
-            <div className="flex justify-between items-center mb-8">
+            <div className="flex flex-wrap justify-between items-start gap-3 mb-6 md:mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold mb-2 text-[var(--text-primary)]">{t('marketHeadlines')}</h1>
-                    <p className="text-[var(--text-secondary)]">{t('newsSubtitle')}</p>
+                    <h1 className="text-2xl md:text-3xl font-bold mb-1 md:mb-2 text-[var(--text-primary)]">{t('marketHeadlines')}</h1>
+                    <p className="text-sm md:text-base text-[var(--text-secondary)]">{t('newsSubtitle')}</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 md:gap-3">
                     <button
                         onClick={() => setLanguage(language === 'en' ? 'zh' : 'en')}
                         className="px-3 py-2 border border-[var(--border-subtle)] hover:bg-[var(--bg-subtle)] rounded-lg transition-colors text-sm font-semibold text-[var(--text-primary)]"
                     >
                         {language === 'en' ? 'CN' : 'EN'}
                     </button>
-                    <Link href="/dashboard" className="px-4 py-2 bg-[var(--bg-panel)] border border-[var(--border-subtle)] hover:bg-[var(--bg-subtle)] rounded-lg transition-colors text-sm font-semibold text-[var(--text-primary)]">
+                    <Link href="/dashboard" className="px-3 md:px-4 py-2 bg-[var(--bg-panel)] border border-[var(--border-subtle)] hover:bg-[var(--bg-subtle)] rounded-lg transition-colors text-sm font-semibold text-[var(--text-primary)]">
                         {t('backToDashboard')}
                     </Link>
                 </div>
             </div>
 
+            {/* Mobile: horizontal scrollable filter pills */}
+            <div className="md:hidden mb-4">
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                    {user && (
+                        <button
+                            onClick={() => setIsManageModalOpen(true)}
+                            className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border border-[var(--text-accent)] text-[var(--text-accent)] transition-colors"
+                        >
+                            {t('manage')}
+                        </button>
+                    )}
+                    {filters.map(item => (
+                        <button
+                            key={item.id}
+                            onClick={() => setSelectedFilter(item.id)}
+                            className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap ${selectedFilter === item.id
+                                ? 'bg-blue-600 text-white shadow-lg'
+                                : 'bg-[var(--bg-panel)] border border-[var(--border-subtle)] text-[var(--text-muted)]'
+                            }`}
+                        >
+                            {getFilterName(item)}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
             <div className="flex flex-col md:flex-row gap-8">
-                {/* Sidebar Filter */}
-                <div className="w-full md:w-64 flex-shrink-0">
+                {/* Sidebar Filter (desktop only) */}
+                <div className="hidden md:block w-64 flex-shrink-0">
                     <div className="bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-xl p-4 sticky top-6">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="font-bold text-[var(--text-secondary)] text-xs uppercase tracking-wider">{t('marketFocus')}</h3>
