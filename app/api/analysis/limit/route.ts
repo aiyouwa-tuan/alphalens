@@ -3,14 +3,11 @@ import { cookies } from 'next/headers';
 import { supabase } from '@/lib/supabase';
 
 const DAILY_LIMIT = 3;
+const ADMIN_USER_ID = 'admin';
 
 function getTodayKey(): string {
     return new Date().toISOString().split('T')[0];
 }
-
-// Cookie-based fallback for tracking per-user daily usage
-// Cookie name pattern: `analysis_usage_{userId}_{date}`
-// Value: number of times used
 
 async function getUsageFromCookie(userId: string): Promise<number> {
     const cookieStore = await cookies();
@@ -25,12 +22,11 @@ async function setUsageCookie(userId: string, used: number): Promise<void> {
     cookieStore.set(key, String(used), {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        maxAge: 60 * 60 * 24, // 1 day
+        maxAge: 60 * 60 * 24,
         path: '/',
     });
 }
 
-// Try Supabase, otherwise use cookies
 async function getUsage(userId: string): Promise<number> {
     if (supabase) {
         try {
@@ -43,7 +39,7 @@ async function getUsage(userId: string): Promise<number> {
                 console.error('Supabase analysis_usage fetch error:', error);
             }
         } catch (e) {
-            // Table may not exist, fall through to cookie
+            // Fall through to cookie
         }
     }
     return getUsageFromCookie(userId);
@@ -57,8 +53,7 @@ async function setUsage(userId: string, used: number): Promise<void> {
                 date: getTodayKey(),
                 used,
             }, { onConflict: 'user_id,date' });
-            if (!error) return; // Success
-            // If table doesn't exist (PGRST205), fall through to cookie
+            if (!error) return;
             if (error.code !== 'PGRST205') {
                 console.error('Supabase analysis_usage upsert error:', error);
             }
@@ -67,6 +62,12 @@ async function setUsage(userId: string, used: number): Promise<void> {
         }
     }
     await setUsageCookie(userId, used);
+}
+
+async function isAdminSession(): Promise<boolean> {
+    const cookieStore = await cookies();
+    return cookieStore.get('isAdmin')?.value === '1' &&
+           cookieStore.get('userId')?.value === ADMIN_USER_ID;
 }
 
 // GET: Return the user's daily usage
@@ -78,17 +79,27 @@ export async function GET() {
         return NextResponse.json({ loggedIn: false, used: 0, total: DAILY_LIMIT });
     }
 
+    // Admin gets unlimited quota
+    if (await isAdminSession()) {
+        return NextResponse.json({ loggedIn: true, used: 0, total: 9999, isAdmin: true });
+    }
+
     const used = await getUsage(userId);
     return NextResponse.json({ loggedIn: true, used, total: DAILY_LIMIT });
 }
 
-// POST: Increment the user's daily usage by 1
+// POST: Increment the user's daily usage by 1 (admin skips increment)
 export async function POST() {
     const cookieStore = await cookies();
     const userId = cookieStore.get('userId')?.value;
 
     if (!userId) {
         return NextResponse.json({ error: '请先登录后再使用分析功能' }, { status: 401 });
+    }
+
+    // Admin: never consume quota
+    if (await isAdminSession()) {
+        return NextResponse.json({ loggedIn: true, used: 0, total: 9999, isAdmin: true });
     }
 
     const currentUsed = await getUsage(userId);
