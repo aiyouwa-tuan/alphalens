@@ -4,7 +4,7 @@ import json
 
 
 def create_bull_researcher(llm, memory):
-    async def bull_node(state) -> dict:
+    def bull_node(state) -> dict:
         investment_debate_state = state["investment_debate_state"]
         history = investment_debate_state.get("history", "")
         bull_history = investment_debate_state.get("bull_history", "")
@@ -31,8 +31,6 @@ Key points to focus on:
 - Competitive Advantages: Emphasize factors like unique products, strong branding, or dominant market positioning.
 - Positive Indicators: Use financial health, industry trends, and recent positive news as evidence.
 - Bear Counterpoints: Critically analyze the bear argument with specific data and sound reasoning, addressing concerns thoroughly and showing why the bull perspective holds stronger merit.
-
-CRITICAL LENGTH REQUIREMENT: Your final output MUST be very detailed (equivalent to 1-2 PDF pages). Expand on EVERY point, include exhaustive context, detail the counter-arguments, explain the precise financial reasoning derived from the analysts, and do not summarize briefly.
 - Engagement: Present your argument in a conversational style, engaging directly with the bear analyst's points and debating effectively rather than just listing data.
 
 Resources available:
@@ -46,7 +44,7 @@ Reflections from similar situations and lessons learned: {past_memory_str}
 Use this information to deliver a compelling bull argument, refute the bear's concerns, and engage in a dynamic debate that demonstrates the strengths of the bull position. You must also address reflections and learn from lessons and mistakes you made in the past.
 """
 
-        response = await llm.ainvoke(prompt)
+        response = llm.invoke(prompt)
 
         argument = f"Bull Analyst: {response.content}"
 

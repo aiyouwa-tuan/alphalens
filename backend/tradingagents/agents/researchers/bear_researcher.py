@@ -4,7 +4,7 @@ import json
 
 
 def create_bear_researcher(llm, memory):
-    async def bear_node(state) -> dict:
+    def bear_node(state) -> dict:
         investment_debate_state = state["investment_debate_state"]
         history = investment_debate_state.get("history", "")
         bear_history = investment_debate_state.get("bear_history", "")
@@ -26,8 +26,6 @@ def create_bear_researcher(llm, memory):
         
 You are a Bear Analyst making the case against investing in the stock. Your goal is to present a well-reasoned argument emphasizing risks, challenges, and negative indicators. Leverage the provided research and data to highlight potential downsides and counter bullish arguments effectively.
 
-CRITICAL LENGTH REQUIREMENT: Your final output MUST be very detailed (equivalent to 1-2 PDF pages). Expand on EVERY point, include exhaustive context, detail the counter-arguments, explain the precise financial reasoning derived from the analysts, and do not summarize briefly.
-
 Key points to focus on:
 
 - Risks and Challenges: Highlight factors like market saturation, financial instability, or macroeconomic threats that could hinder the stock's performance.
@@ -48,7 +46,7 @@ Reflections from similar situations and lessons learned: {past_memory_str}
 Use this information to deliver a compelling bear argument, refute the bull's claims, and engage in a dynamic debate that demonstrates the risks and weaknesses of investing in the stock. You must also address reflections and learn from lessons and mistakes you made in the past.
 """
 
-        response = await llm.ainvoke(prompt)
+        response = llm.invoke(prompt)
 
         argument = f"Bear Analyst: {response.content}"
 

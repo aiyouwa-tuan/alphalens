@@ -172,35 +172,12 @@ async def start_debate(request: Request, body: DebateRequest):
     config = DEFAULT_CONFIG.copy()
     config["llm_provider"] = body.provider
     config["deep_think_llm"] = body.model
-    # CRITICAL: quick_think_llm is used by ALL analyst nodes, Bull/Bear debate, and Trader.
-    # Reasoning models (DeepSeek-R1, Gemini 3 Pro) are extremely slow (10-20 min per call).
-    # Only deep_think_llm (Research Manager + Risk Judge) should use the heavy reasoning model.
-    # All other nodes must use the fastest available model for the given provider.
+    # v1.2 original behavior: use the same model for both quick and deep thinking.
+    # The simple approach that worked reliably without 404 errors or model confusion.
     provider = body.provider.lower()
-    if provider == "deepseek":
-        # deepseek-chat (V3) is fast and supports tool calling; R1 does not
+    if provider == "deepseek" and "reasoner" in body.model.lower():
+        # deepseek-reasoner doesn't support tool calling; use deepseek-chat for quick tasks
         config["quick_think_llm"] = "deepseek-chat"
-    elif provider == "google":
-        # Google: Derive the fast flash model from the SAME Gemini generation.
-        # User's API key can ONLY access the same generation as their selected model.
-        # Cross-generation calls (e.g., using gemini-1.5-flash when only gemini-3 is allowed)
-        # will always result in NOT_FOUND 404 errors.
-        model_lower = body.model.lower()
-        if "gemini-3" in model_lower:
-            # User has Gemini 3 API access → use the Gemini 3 Flash (fast) variant
-            config["quick_think_llm"] = "gemini-3-flash"
-        elif "gemini-2.5" in model_lower or "gemini-2" in model_lower:
-            # User has Gemini 2 API access → use the Gemini 2.0 Flash (fast) variant
-            config["quick_think_llm"] = "gemini-2.0-flash"
-        else:
-            # Legacy 1.5 access: they picked 1.5-pro so use 1.5-flash
-            config["quick_think_llm"] = "gemini-1.5-flash"
-    elif provider == "openai":
-        # o1/o3 are reasoning models; fall back to gpt-4o for quick tasks
-        if body.model.startswith("o1") or body.model.startswith("o3"):
-            config["quick_think_llm"] = "gpt-4o"
-        else:
-            config["quick_think_llm"] = body.model
     else:
         config["quick_think_llm"] = body.model
     
