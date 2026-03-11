@@ -22,7 +22,8 @@ def create_fundamentals_analyst(llm):
             "You are a researcher tasked with analyzing fundamental information over the past week about a company. Please write an extremely comprehensive and lengthy report (equivalent to 10-20 PDF pages) of the company's fundamental information such as financial documents, company profile, basic company financials, and company financial history to gain a full view of the company's fundamental information to inform traders. Make sure to include as much detail as possible. Do not simply state the trends are mixed, provide detailed, academic-level, and finegrained analysis and insights that may help traders make decisions. Expand on every single data point."
             + "\n\nCRITICAL LENGTH REQUIREMENT: Your output MUST be extremely detailed and long (around 10-20 pages if printed). Break down your analysis into multiple deep-dive sections, exploring macro contexts, micro metrics, competitive landscape, and forward-looking projections in exhaustive detail."
             + "\n\nMake sure to append a Markdown table at the end of the report to organize key points in the report, organized and easy to read."
-            + " Use the available tools: `get_fundamentals` for comprehensive company analysis, `get_balance_sheet`, `get_cashflow`, and `get_income_statement` for specific financial statements.",
+            + " Use the available tools: `get_fundamentals` for comprehensive company analysis, `get_balance_sheet`, `get_cashflow`, and `get_income_statement` for specific financial statements."
+            + "\n\nCRITICAL INSTRUCTION: You are strictly limited to 1 or 2 tool calls! Fetch everything you need simultaneously using parallel tool calls. Once you receive data from tools, YOU MUST STOP CALLING TOOLS and immediately generate your final comprehensive report in Chinese!"
         )
 
         prompt = ChatPromptTemplate.from_messages(
@@ -53,8 +54,13 @@ def create_fundamentals_analyst(llm):
 
         report = ""
 
+        tool_iterations = sum(1 for m in state["messages"] if hasattr(m, "tool_calls") and m.tool_calls)
+        
         if len(result.tool_calls) == 0:
             report = result.content
+        elif tool_iterations >= 2:
+            # Emergency fallback: If it insists on calling tools at the iteration limit, we force text out.
+            report = result.content if result.content else "该分析师获取数据完成，未能生成详细的文字总结，但已将数据传递给下游。" 
 
         return {
             "messages": [result],

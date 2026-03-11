@@ -47,6 +47,7 @@ Volume-Based Indicators:
 - Select indicators that provide diverse and complementary information. Avoid redundancy (e.g., do not select both rsi and stochrsi). Also briefly explain why they are suitable for the given market context. When you tool call, please use the exact name of the indicators provided above as they are defined parameters, otherwise your call will fail. Please make sure to call get_stock_data first to retrieve the CSV that is needed to generate indicators. Then use get_indicators with the specific indicator names. Write a very detailed and nuanced report of the trends you observe. Do not simply state the trends are mixed, provide extremely detailed, academic-level, and finegrained analysis and insights that may help traders make decisions."""
             + """\n\nCRITICAL LENGTH REQUIREMENT: Your output MUST be extremely detailed and long (equivalent to 10-20 PDF pages). Break down your analysis into multiple deep-dive sections, exploring every single indicator's historical context, interplay with others, and nuanced market psychology in exhaustive detail."""
             + """ Make sure to append a Markdown table at the end of the report to organize key points in the report, organized and easy to read."""
+            + "\n\nCRITICAL INSTRUCTION: You are strictly limited to 1 or 2 tool calls! Fetch everything you need simultaneously using parallel tool calls. Once you receive data from tools, YOU MUST STOP CALLING TOOLS and immediately generate your final comprehensive report in Chinese!"
         )
 
         prompt = ChatPromptTemplate.from_messages(
@@ -77,8 +78,13 @@ Volume-Based Indicators:
 
         report = ""
 
+        tool_iterations = sum(1 for m in state["messages"] if hasattr(m, "tool_calls") and m.tool_calls)
+        
         if len(getattr(result, "tool_calls", [])) == 0:
             report = result.content
+        elif tool_iterations >= 2:
+            # Emergency fallback: If it insists on calling tools at the iteration limit, we force text out.
+            report = result.content if result.content else "该分析师获取数据完成，未能生成详细的文字总结，但已将数据传递给下游。" 
 
         return {
             "messages": [result],
