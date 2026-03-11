@@ -172,9 +172,23 @@ async def start_debate(request: Request, body: DebateRequest):
     config = DEFAULT_CONFIG.copy()
     config["llm_provider"] = body.provider
     config["deep_think_llm"] = body.model
-    # DeepSeek-Reasoner (R1) does not support tool calling APIs, so we must fall back to deepseek-chat (V3) for quick_think_llm
-    if body.provider == "deepseek" and body.model == "deepseek-reasoner":
+    # CRITICAL: quick_think_llm is used by ALL analyst nodes, Bull/Bear debate, and Trader.
+    # Reasoning models (DeepSeek-R1, Gemini 3 Pro) are extremely slow (10-20 min per call).
+    # Only deep_think_llm (Research Manager + Risk Judge) should use the heavy reasoning model.
+    # All other nodes must use the fastest available model for the given provider.
+    provider = body.provider.lower()
+    if provider == "deepseek":
+        # deepseek-chat (V3) is fast and supports tool calling; R1 does not
         config["quick_think_llm"] = "deepseek-chat"
+    elif provider == "google":
+        # gemini-1.5-flash is very fast and supports tool calling; gemini-3-pro is slow
+        config["quick_think_llm"] = "gemini-2.0-flash"
+    elif provider == "openai":
+        # o1/o3 are reasoning models; fall back to gpt-4o for quick tasks
+        if body.model.startswith("o1") or body.model.startswith("o3"):
+            config["quick_think_llm"] = "gpt-4o"
+        else:
+            config["quick_think_llm"] = body.model
     else:
         config["quick_think_llm"] = body.model
     
