@@ -10,13 +10,17 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
+// Allow this API route (serverless function) to wait longer if Render is experiencing a cold start.
+// Vercel Hobby allows up to 10s (default) or 60s (with config), Pro allows up to 300s.
+export const maxDuration = 60;
+
 const ADMIN_USER_ID = 'admin';
 const ADMIN_SECRET_TOKEN = process.env.ADMIN_SECRET_TOKEN || 'alphalens-admin-secret-2026';
 
 async function isAdminSession(): Promise<boolean> {
     const cookieStore = await cookies();
     return cookieStore.get('isAdmin')?.value === '1' &&
-           cookieStore.get('userId')?.value === ADMIN_USER_ID;
+        cookieStore.get('userId')?.value === ADMIN_USER_ID;
 }
 
 export async function POST(request: Request) {
