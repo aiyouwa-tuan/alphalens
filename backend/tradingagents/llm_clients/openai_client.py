@@ -55,6 +55,11 @@ class OpenAIClient(BaseLLMClient):
             api_key = os.environ.get("OPENROUTER_API_KEY")
             if api_key:
                 llm_kwargs["api_key"] = api_key
+        elif self.provider == "deepseek":
+            llm_kwargs["base_url"] = "https://api.deepseek.com/v1"
+            api_key = self.kwargs.get("api_key") or os.environ.get("DEEPSEEK_API_KEY")
+            if api_key:
+                llm_kwargs["api_key"] = api_key
         elif self.provider == "doubao":
             api_key = self.kwargs.get("api_key") or os.environ.get("DOUBAO_API_KEY")
             if api_key:

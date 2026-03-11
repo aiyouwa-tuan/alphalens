@@ -186,6 +186,8 @@ async def start_debate(request: Request, body: DebateRequest):
             os.environ["GOOGLE_API_KEY"] = body.api_key
         elif body.provider == "doubao":
             os.environ["DOUBAO_API_KEY"] = body.api_key
+        elif body.provider == "deepseek":
+            os.environ["DEEPSEEK_API_KEY"] = body.api_key
 
     # Generate unique task ID
     task_id = str(uuid.uuid4())
