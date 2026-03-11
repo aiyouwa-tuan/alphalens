@@ -807,7 +807,7 @@ export default function AnalysisPage() {
                     </div>
 
                     {/* Sub Search row */}
-                    {!isAnalyzing && !finalDecision && (
+                    {!isAnalyzing && !messages.some(m => m.type === "error") && !finalDecision && (
                         <div className="flex flex-wrap items-center justify-center gap-4 md:gap-8 mt-6 md:mt-8 text-sm">
                             <div className="flex items-center gap-2">
                                 <span className="text-slate-400 font-medium mr-1 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Recent:</span>
@@ -879,7 +879,7 @@ export default function AnalysisPage() {
                     <div className="lg:col-span-9 flex flex-col gap-6">
 
                         {/* 3 Overview Cards - (Shown when idle matching Figma bottom half) */}
-                        {!isAnalyzing && !finalDecision && (
+                        {!isAnalyzing && !messages.some(m => m.type === "error") && !finalDecision && (
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div className="bg-white rounded-[20px] p-6 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
                                     <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center mb-5">
@@ -906,7 +906,7 @@ export default function AnalysisPage() {
                         )}
 
                         {/* Analysis Progress Pipeline */}
-                        {isAnalyzing && !finalDecision && (() => {
+                        {(isAnalyzing || messages.some(m => m.type === "error")) && !finalDecision && (() => {
                             // These match the actual LangGraph node names from the backend
                             const PHASES = [
                                 {
@@ -981,10 +981,13 @@ export default function AnalysisPage() {
                                 return node;
                             };
 
+                            const hasError = messages.some(m => m.type === "error");
+                            const errorMsg = messages.find(m => m.type === "error")?.message;
+
                             return (
-                                <div className="anim-fade-scale bg-white rounded-[24px] border border-blue-100 shadow-xl shadow-blue-500/5 overflow-hidden">
+                                <div className={`anim-fade-scale bg-white rounded-[24px] border ${hasError ? 'border-red-200 shadow-red-500/5' : 'border-blue-100 shadow-blue-500/5'} shadow-xl overflow-hidden`}>
                                     {/* Header */}
-                                    <div className="px-6 pt-6 pb-4 border-b border-slate-100 bg-gradient-to-r from-blue-50/50 to-white">
+                                    <div className={`px-6 pt-6 pb-4 border-b border-slate-100 bg-gradient-to-r ${hasError ? 'from-red-50/50 to-white' : 'from-blue-50/50 to-white'}`}>
                                         <div className="flex items-center justify-between mb-3">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded-xl bg-[#0066FF] flex items-center justify-center shadow-lg shadow-blue-500/30">
@@ -994,8 +997,8 @@ export default function AnalysisPage() {
                                                     <h3 className="text-lg font-bold text-slate-900">
                                                         {t("analyzingLabel")}{ticker}
                                                     </h3>
-                                                    <p className="text-xs text-slate-400 font-medium">
-                                                        {activeNode ? getNodeLabel(activeNode) : (language === 'zh' ? '正在启动分析引擎...' : 'Starting analysis engine...')}
+                                                    <p className={`text-xs font-medium ${hasError ? 'text-red-500' : 'text-slate-400'}`}>
+                                                        {hasError ? (language === 'zh' ? '分析任务异常中止' : 'Analysis Aborted') : (activeNode ? getNodeLabel(activeNode) : (language === 'zh' ? '正在启动分析引擎...' : 'Starting analysis engine...'))}
                                                     </p>
                                                 </div>
                                             </div>
@@ -1012,11 +1015,10 @@ export default function AnalysisPage() {
                                                 </button>
                                             </div>
                                         </div>
-                                        {/* Progress Bar */}
                                         <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                                             <div
                                                 style={{ width: `${progress}%` }}
-                                                className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-700 ease-out"
+                                                className={`h-full ${hasError ? 'bg-red-500' : 'bg-gradient-to-r from-blue-500 to-blue-600'} rounded-full transition-all duration-700 ease-out`}
                                             />
                                         </div>
                                     </div>
@@ -1099,15 +1101,19 @@ export default function AnalysisPage() {
                                     )}
 
                                     {/* Footer Status */}
-                                    <div className="px-6 py-3 border-t border-slate-100 bg-slate-50/50">
+                                    <div className={`px-6 py-3 border-t ${hasError ? 'border-red-100 bg-red-50/50' : 'border-slate-100 bg-slate-50/50'}`}>
                                         <div className="flex items-center gap-2">
-                                            <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                                            <p className="text-xs text-slate-500 font-medium truncate flex-1">
-                                                {activeNode ? `${getNodeLabel(activeNode)} ${language === 'zh' ? '正在工作...' : 'is working...'}` : (language === 'zh' ? '正在初始化...' : 'Initializing...')}
+                                            {hasError ? (
+                                                <div className="w-2 h-2 rounded-full bg-red-500" />
+                                            ) : (
+                                                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                                            )}
+                                            <p className={`text-xs font-medium truncate flex-1 ${hasError ? 'text-red-600' : 'text-slate-500'}`}>
+                                                {hasError ? `Error: ${errorMsg}` : (activeNode ? `${getNodeLabel(activeNode)} ${language === 'zh' ? '正在工作...' : 'is working...'}` : (language === 'zh' ? '正在初始化...' : 'Initializing...'))}
                                             </p>
-                                            <span className={`text-[10px] font-medium tabular-nums ${analysisElapsed >= 240 ? 'text-amber-500 font-bold' : 'text-slate-400'}`}>
+                                            <span className={`text-[10px] font-medium tabular-nums ${analysisElapsed >= 240 && !hasError ? 'text-amber-500 font-bold' : 'text-slate-400'}`}>
                                                 {Math.floor(analysisElapsed / 60)}:{String(analysisElapsed % 60).padStart(2, '0')}
-                                                {analysisElapsed >= 240 && (language === 'zh' ? ' 即将超时' : ' timeout soon')}
+                                                {analysisElapsed >= 240 && !hasError && (language === 'zh' ? ' 即将超时' : ' timeout soon')}
                                             </span>
                                         </div>
                                     </div>
