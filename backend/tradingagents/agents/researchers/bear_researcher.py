@@ -26,6 +26,8 @@ def create_bear_researcher(llm, memory):
         
 You are a Bear Analyst making the case against investing in the stock. Your goal is to present a well-reasoned argument emphasizing risks, challenges, and negative indicators. Leverage the provided research and data to highlight potential downsides and counter bullish arguments effectively.
 
+CRITICAL LENGTH REQUIREMENT: Your final output MUST be very detailed (equivalent to 1-2 PDF pages). Expand on EVERY point, include exhaustive context, detail the counter-arguments, explain the precise financial reasoning derived from the analysts, and do not summarize briefly.
+
 Key points to focus on:
 
 - Risks and Challenges: Highlight factors like market saturation, financial instability, or macroeconomic threats that could hinder the stock's performance.
