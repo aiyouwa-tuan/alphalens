@@ -598,6 +598,8 @@ export default function AnalysisPage() {
 
         const newHistoryId = Date.now().toString();
 
+        const originalTicker = ticker;
+
         try {
             let resolvedTicker = ticker.toUpperCase();
 
@@ -608,7 +610,8 @@ export default function AnalysisPage() {
                     const data = await searchRes.json();
                     if (data.results && data.results.length > 0) {
                         resolvedTicker = data.results[0].symbol;
-                        setTicker(resolvedTicker);
+                        // Do not overwrite the user's input box
+                        // setTicker(resolvedTicker); 
                     }
                 }
             } catch (searchErr) {
@@ -657,7 +660,7 @@ export default function AnalysisPage() {
             const newItem: AnalysisHistoryItem = {
                 id: newHistoryId,
                 taskId: remoteTaskId,
-                ticker: resolvedTicker,
+                ticker: originalTicker, // Keep the user's original input visible in history
                 startTime: nowISO,
                 timestamp: nowISO,
                 status: 'running' as const
@@ -677,7 +680,7 @@ export default function AnalysisPage() {
 
             // 3. Connect to the stream
             abortControllerRef.current = new AbortController();
-            await processStream(remoteTaskId, newHistoryId, resolvedTicker, abortControllerRef.current.signal);
+            await processStream(remoteTaskId, newHistoryId, originalTicker, abortControllerRef.current.signal);
 
         } catch (error: any) {
             if (error.name !== "AbortError") {
