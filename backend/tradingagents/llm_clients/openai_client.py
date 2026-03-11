@@ -74,6 +74,9 @@ class OpenAIClient(BaseLLMClient):
             if key in self.kwargs:
                 llm_kwargs[key] = self.kwargs[key]
 
+        if "timeout" not in llm_kwargs:
+            llm_kwargs["timeout"] = 900
+
         return UnifiedChatOpenAI(**llm_kwargs)
 
     def validate_model(self) -> bool:
