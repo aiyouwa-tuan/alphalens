@@ -57,9 +57,9 @@ class GoogleClient(BaseLLMClient):
         if "max_retries" not in llm_kwargs:
             llm_kwargs["max_retries"] = 2
 
-        # Default per-call timeout: 90 seconds
+        # Default per-call timeout: 300 seconds (5 minutes) for deep reasoning models
         if "timeout" not in llm_kwargs:
-            llm_kwargs["timeout"] = 90
+            llm_kwargs["timeout"] = 300
 
         # Map thinking_level to appropriate API param based on model
         # Gemini 3 Pro: low, high
