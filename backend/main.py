@@ -182,7 +182,7 @@ async def start_debate(request: Request, body: DebateRequest):
         config["quick_think_llm"] = "deepseek-chat"
     elif provider == "google":
         # gemini-1.5-flash is very fast and supports tool calling; gemini-3-pro is slow
-        config["quick_think_llm"] = "gemini-2.0-flash"
+        config["quick_think_llm"] = "gemini-1.5-flash"
     elif provider == "openai":
         # o1/o3 are reasoning models; fall back to gpt-4o for quick tasks
         if body.model.startswith("o1") or body.model.startswith("o3"):
