@@ -208,7 +208,7 @@ export default function TopBar() {
                             Log in
                         </Link>
                         <Link
-                            href="/login"
+                            href="/register"
                             className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg bg-[var(--text-accent)] text-[#0B0D11] text-sm font-bold hover:opacity-90 transition-opacity shadow-sm shadow-cyan-500/20"
                         >
                             <span>Sign up</span>
