@@ -233,9 +233,18 @@ async def start_debate(request: Request, body: DebateRequest):
 
     async def _run_graph():
         try:
+            from langchain_core.callbacks import AsyncCallbackHandler
+            
+            class StreamingCallbackHandler(AsyncCallbackHandler):
+                async def on_llm_new_token(self, token: str, **kwargs) -> None:
+                    # Push every generation token to the SSE queue immediately
+                    _push_event({"type": "token", "content": token})
+
             # 1. Initialize Graph synchronously in a background thread to prevent blocking FastAPI async loop
             def _init_graph():
-                graph = TradingAgentsGraph(debug=True, config=config)
+                # We instantiate the callback here and pass it
+                stream_handler = StreamingCallbackHandler()
+                graph = TradingAgentsGraph(debug=True, config=config, callbacks=[stream_handler])
                 initial_state = graph.propagator.create_initial_state(ticker, current_graph_date)
                 g_args = graph.propagator.get_graph_args()
                 return graph, initial_state, g_args

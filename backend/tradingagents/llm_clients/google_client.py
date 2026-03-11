@@ -52,6 +52,8 @@ class GoogleClient(BaseLLMClient):
             if key in self.kwargs:
                 target_key = "max_output_tokens" if key == "max_tokens" else key
                 llm_kwargs[target_key] = self.kwargs[key]
+                if key == "callbacks":
+                    llm_kwargs["streaming"] = True
 
         # Limit retries to avoid hanging for minutes on API failures
         if "max_retries" not in llm_kwargs:

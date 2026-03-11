@@ -160,6 +160,8 @@ export default function AnalysisPage() {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [messages, setMessages] = useState<AgentMessage[]>([]);
     const [activeNode, setActiveNode] = useState<string | null>(null);
+    const [streamingNode, setStreamingNode] = useState<string | null>(null);
+    const [streamingContent, setStreamingContent] = useState<string>("");
     const [finalDecision, setFinalDecision] = useState<string | null>(null); // Changed to state variable
     const [showThoughts, setShowThoughts] = useState(true); // New state variable
     const [isExportingPDF, setIsExportingPDF] = useState(false);
@@ -258,9 +260,23 @@ export default function AnalysisPage() {
                     if (trimmedBlock.startsWith("data: ")) {
                         try {
                             const dataStr = trimmedBlock.replace(/^data:\s*/, "");
-                            const data = JSON.parse(dataStr) as AgentMessage;
+                            const data = JSON.parse(dataStr);
 
-                            setMessages((prev) => [...prev, data]);
+                            if (data.type === "token") {
+                                setStreamingNode(data.node || activeNode);
+                                setStreamingContent(prev => prev + (data.content || ""));
+                                continue;
+                            }
+
+                            if (data.type === "update" || data.type === "done" || data.type === "error") {
+                                // Node has finished its major update, clear stream
+                                if (data.node) {
+                                    setStreamingNode(null);
+                                    setStreamingContent("");
+                                }
+                            }
+
+                            setMessages((prev) => [...prev, data as AgentMessage]);
 
                             if (data.node) setActiveNode(data.node);
                             if (data.final_trade_decision) {
@@ -591,6 +607,8 @@ export default function AnalysisPage() {
         setAnalysisElapsed(0);
         setMessages([]);
         setActiveNode(null);
+        setStreamingNode(null);
+        setStreamingContent("");
         setFinalDecision(null);
         setShowThoughts(true);
         if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
@@ -1108,6 +1126,28 @@ export default function AnalysisPage() {
                                                             </div>
                                                         </div>
                                                     ))}
+
+                                                    {streamingNode && streamingContent && (
+                                                        <div className="flex gap-3">
+                                                            <div className="flex-shrink-0 mt-0.5">
+                                                                <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-blue-500 relative">
+                                                                    <span className="absolute w-full h-full rounded-full animate-ping bg-blue-400 opacity-20"></span>
+                                                                    {streamingNode.charAt(0) || 'A'}
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-[11px] font-bold text-blue-600 mb-0.5 flex items-center gap-1.5">
+                                                                    {getNodeLabel(streamingNode)}
+                                                                    <span className="text-[9px] px-1.5 py-0.5 bg-blue-50 text-blue-500 rounded-sm italic animate-pulse">
+                                                                        {language === 'zh' ? '深度推理中...' : 'Deep Reasoning...'}
+                                                                    </span>
+                                                                </p>
+                                                                <p className="text-xs text-slate-600 leading-relaxed max-h-[120px] overflow-y-auto whitespace-pre-wrap border border-blue-100 bg-blue-50/30 rounded-lg p-2 inner-shadow-sm font-mono tracking-tight">
+                                                                    {streamingContent}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>

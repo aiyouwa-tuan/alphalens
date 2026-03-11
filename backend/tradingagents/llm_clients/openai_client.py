@@ -73,6 +73,8 @@ class OpenAIClient(BaseLLMClient):
         for key in ("timeout", "max_retries", "reasoning_effort", "api_key", "callbacks"):
             if key in self.kwargs:
                 llm_kwargs[key] = self.kwargs[key]
+                if key == "callbacks":
+                    llm_kwargs["streaming"] = True
 
         if "timeout" not in llm_kwargs:
             llm_kwargs["timeout"] = 1800
