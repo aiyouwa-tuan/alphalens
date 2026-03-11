@@ -75,7 +75,7 @@ class OpenAIClient(BaseLLMClient):
                 llm_kwargs[key] = self.kwargs[key]
 
         if "timeout" not in llm_kwargs:
-            llm_kwargs["timeout"] = 900
+            llm_kwargs["timeout"] = 1800
 
         return UnifiedChatOpenAI(**llm_kwargs)
 

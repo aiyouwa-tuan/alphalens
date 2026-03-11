@@ -213,8 +213,8 @@ async def start_debate(request: Request, body: DebateRequest):
 
     _push_event({"type": "status", "message": f"Initializing AI Agents to analyze {ticker}..."})
 
-    # Global task timeout in seconds (15 minutes for slow reasoner models)
-    TASK_TIMEOUT = 900
+    # Global task timeout in seconds (30 minutes for slow reasoner models)
+    TASK_TIMEOUT = 1800
 
     # Background executor function
     async def graph_executor():

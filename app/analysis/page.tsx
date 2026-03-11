@@ -1111,9 +1111,9 @@ export default function AnalysisPage() {
                                             <p className={`text-xs font-medium truncate flex-1 ${hasError ? 'text-red-600' : 'text-slate-500'}`}>
                                                 {hasError ? `Error: ${errorMsg}` : (activeNode ? `${getNodeLabel(activeNode)} ${language === 'zh' ? '正在工作...' : 'is working...'}` : (language === 'zh' ? '正在初始化...' : 'Initializing...'))}
                                             </p>
-                                            <span className={`text-[10px] font-medium tabular-nums ${analysisElapsed >= 840 && !hasError ? 'text-amber-500 font-bold' : 'text-slate-400'}`}>
+                                            <span className={`text-[10px] font-medium tabular-nums ${analysisElapsed >= 1740 && !hasError ? 'text-amber-500 font-bold' : 'text-slate-400'}`}>
                                                 {Math.floor(analysisElapsed / 60)}:{String(analysisElapsed % 60).padStart(2, '0')}
-                                                {analysisElapsed >= 840 && !hasError && (language === 'zh' ? ' 即将超时' : ' timeout soon')}
+                                                {analysisElapsed >= 1740 && !hasError && (language === 'zh' ? ' 即将超时' : ' timeout soon')}
                                             </span>
                                         </div>
                                     </div>
