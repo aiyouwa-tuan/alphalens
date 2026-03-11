@@ -216,7 +216,8 @@ async def start_debate(request: Request, body: DebateRequest):
     ACTIVE_TASKS[task_id] = {
         "events": [], # Store history for reconnections
         "queues": [], # List of client queues waiting for live updates
-        "status": "running"
+        "status": "running",
+        "task": None  # Will be set once asyncio task is created
     }
     
     # Push an event immediately
@@ -251,6 +252,9 @@ async def start_debate(request: Request, body: DebateRequest):
             
             class StreamingCallbackHandler(AsyncCallbackHandler):
                 async def on_llm_new_token(self, token: str, **kwargs) -> None:
+                    # Check if user pressed Stop — immediately abort mid-generation
+                    if ACTIVE_TASKS.get(task_id, {}).get("status") == "canceled":
+                        raise asyncio.CancelledError("User requested stop")
                     # Push every generation token to the SSE queue immediately
                     _push_event({"type": "token", "content": token})
 

@@ -167,6 +167,7 @@ export default function AnalysisPage() {
     const [isExportingPDF, setIsExportingPDF] = useState(false);
     const [analysisElapsed, setAnalysisElapsed] = useState(0); // seconds since analysis started
     const abortControllerRef = useRef<AbortController | null>(null);
+    const activeTaskIdRef = useRef<string | null>(null);
     const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     // Limit State (per-account)
@@ -573,8 +574,19 @@ export default function AnalysisPage() {
     };
 
     const handleStop = () => {
+        // 1. Tell the backend to cancel the Python async graph task
+        const taskId = activeTaskIdRef.current;
+        if (taskId) {
+            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+            fetch(`${backendUrl}/api/debate/stop`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ task_id: taskId })
+            }).catch(err => console.error('Failed to stop backend task:', err));
+            activeTaskIdRef.current = null;
+        }
+        // 2. Close the SSE stream on the frontend side
         if (abortControllerRef.current) {
-            console.log("Aborting current fetch request...");
             abortControllerRef.current.abort();
             abortControllerRef.current = null;
         }
@@ -685,6 +697,7 @@ export default function AnalysisPage() {
             }
 
             const remoteTaskId = startData.task_id;
+            activeTaskIdRef.current = remoteTaskId; // Store so handleStop can cancel it
 
             // 2. Log to history *after* getting real task id — save to API immediately
             const nowISO = new Date().toISOString();
