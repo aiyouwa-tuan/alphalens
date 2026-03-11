@@ -213,8 +213,8 @@ async def start_debate(request: Request, body: DebateRequest):
 
     _push_event({"type": "status", "message": f"Initializing AI Agents to analyze {ticker}..."})
 
-    # Global task timeout in seconds (5 minutes)
-    TASK_TIMEOUT = 300
+    # Global task timeout in seconds (15 minutes for slow reasoner models)
+    TASK_TIMEOUT = 900
 
     # Background executor function
     async def graph_executor():
@@ -390,11 +390,15 @@ async def debate_stream(task_id: str):
         task_data["queues"].append(client_queue)
         try:
             while True:
-                # Wait for next live event pushed by graph_executor
-                event = await client_queue.get()
-                if event is None: # Sentinel value meaning task finished
-                    break
-                yield event
+                try:
+                    # Wait up to 15 seconds for a real event
+                    event = await asyncio.wait_for(client_queue.get(), timeout=15.0)
+                    if event is None: # Sentinel value meaning task finished
+                        break
+                    yield event
+                except asyncio.TimeoutError:
+                    # Send a keep-alive status event to prevent Render from dropping idle connections waiting on deep reasoning
+                    yield format_sse({"type": "status", "message": "深度思考中，请耐心等待..."})
         except asyncio.CancelledError:
             # The client closed the connection (page refresh, unmount)
             # Safe disconnection. The background task keeps running!
