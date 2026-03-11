@@ -352,8 +352,10 @@ async def start_debate(request: Request, body: DebateRequest):
             
         except asyncio.CancelledError:
              print(f"Task {task_id} canceled.")
-             _push_event({"type": "error", "message": "Analysis stopped by user."})
-             ACTIVE_TASKS[task_id]["status"] = "canceled"
+             if ACTIVE_TASKS[task_id].get("status") == "canceled":
+                 _push_event({"type": "error", "message": "Analysis stopped by user."})
+             # We MUST re-raise to properly let wait_for trigger TimeoutError if it was instead a timeout
+             raise
         except Exception as e:
              _push_event({"type": "error", "message": f"Fatal error: {str(e)}"})
              ACTIVE_TASKS[task_id]["status"] = "error"
