@@ -629,22 +629,35 @@ export default function AnalysisPage() {
             }
             // ------------------------------------
 
+            // 1. Fetch analysis configuration (provider, model, admin token) from Next.js proxy
+            //    This bypasses Vercel's 60s timeout limit by letting the browser wait directly on Render.
+            const prepRes = await fetch('/api/debate/prepare');
+            const prepData = await prepRes.json();
+
+            if (!prepRes.ok) throw new Error(prepData.error || "Failed to prepare config");
+
             const payload = {
                 ticker: resolvedTicker,
-                provider: "google",
-                model: "gemini-3-pro-preview",
-                api_key: ""
+                provider: prepData.provider || "google",
+                model: prepData.model || "gemini-3-pro-preview",
+                api_key: "",
+                ...(prepData.admin_token ? { admin_token: prepData.admin_token } : {})
             };
 
-            // 1. Kick off background task via server-side proxy.
-            //    The proxy injects the admin token when applicable (token stays server-side).
-            const startRes = await fetch('/api/debate/start', {
+            // 2. Kick off background task directly against the Python Backend
+            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+            const startRes = await fetch(`${backendUrl}/api/debate/start`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
             });
 
-            if (!startRes.ok) throw new Error("Failed to start task");
+            if (!startRes.ok) {
+                if (startRes.status >= 502 && startRes.status <= 504) {
+                    throw new Error(language === 'zh' ? "后台AI引擎正在唤醒中，已准备就绪，请重新点击“立即分析”！" : "Backend AI engine is waking up. Please click Analyze again!");
+                }
+                throw new Error("Failed to start task");
+            }
 
             const startData = await startRes.json();
             if (startData.error) {
