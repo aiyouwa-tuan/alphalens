@@ -34,7 +34,7 @@ Deliverables:
 - A clear and actionable recommendation: Buy, Sell, or Hold.
 - Extremely detailed reasoning anchored in the debate, risk profiles, and past reflections.
 
-CRITICAL LENGTH REQUIREMENT: Your final risk management output MUST be highly focused and clear (equivalent to 1-2 PDF pages). Provide a breakdown of key risk factors, quantitative exposures, qualitative uncertainties, and rationale efficiently without unnecessary filler.
+CRITICAL LENGTH REQUIREMENT: Your final risk management output MUST be extremely detailed and long (equivalent to 10-20 PDF pages). Provide an exhaustive breakdown of all risk factors, quantitative exposures, qualitative uncertainties, and expansive rationale. Do not output a short summary. Unpack every single sentence into paragraphs of deep analysis.
 
 ---
 
