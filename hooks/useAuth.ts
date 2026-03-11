@@ -17,6 +17,21 @@ export function useAuth() {
         }
 
         const checkUser = async () => {
+            // Check custom API first for admin bypass
+            try {
+                const res = await fetch('/api/auth/me');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.user?.isAdmin) {
+                        setUser(data.user);
+                        setLoading(false);
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to fetch custom auth:", e);
+            }
+
             const { data: { session } } = await client.auth.getSession();
             setUser(session?.user || null);
             setLoading(false);
@@ -24,7 +39,11 @@ export function useAuth() {
         checkUser();
 
         const { data: { subscription } } = client.auth.onAuthStateChange((_event: any, session: any) => {
-            setUser(session?.user || null);
+            // If already set to admin, ignore supabase auth state changes mapping to null
+            setUser((prevUser: any) => {
+                if (prevUser?.isAdmin) return prevUser;
+                return session?.user || null;
+            });
         });
 
         return () => subscription.unsubscribe();
@@ -36,7 +55,7 @@ export function useAuth() {
             if (client) {
                 await client.auth.signOut();
             }
-            await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+            await fetch('/api/auth/logout', { method: 'POST' }).catch(() => { });
         } catch (e) {
             console.error("Logout error:", e);
         }
