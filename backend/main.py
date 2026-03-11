@@ -181,8 +181,12 @@ async def start_debate(request: Request, body: DebateRequest):
         # deepseek-chat (V3) is fast and supports tool calling; R1 does not
         config["quick_think_llm"] = "deepseek-chat"
     elif provider == "google":
-        # Google: We use the selected model. The prompt length in analysts dictates the speed.
-        config["quick_think_llm"] = body.model
+        # Google: Reasoning models (like gemini-3) take 15+ minutes per node.
+        # MUST force a fast model for quick tasks to prevent infinite ui hangs.
+        if "gemini-3" in body.model.lower() or "pro" in body.model.lower():
+            config["quick_think_llm"] = "gemini-1.5-flash"
+        else:
+            config["quick_think_llm"] = body.model
     elif provider == "openai":
         # o1/o3 are reasoning models; fall back to gpt-4o for quick tasks
         if body.model.startswith("o1") or body.model.startswith("o3"):
