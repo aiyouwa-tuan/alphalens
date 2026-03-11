@@ -590,8 +590,27 @@ export default function AnalysisPage() {
             abortControllerRef.current.abort();
             abortControllerRef.current = null;
         }
+
+        // 3. Aggressively clear UI state so it doesn't hang visually
         stopAnalyzing();
+        setActiveNode(null);
+        setStreamingNode(null);
+        setStreamingContent("");
+
+        // Mark current history item as canceled
+        setHistory(prev => {
+            const updated = prev.map(item =>
+                (item.status === 'running')
+                    ? { ...item, status: 'error' as const, endTime: new Date().toLocaleString('zh-CN', { hour12: false }) }
+                    : item
+            );
+            saveHistory(updated);
+            return updated;
+        });
+
+        setMessages((prev) => [...prev, { type: "error", message: "Analysis stopped by user." }]);
     };
+
     const handleAnalyze = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!ticker) return;

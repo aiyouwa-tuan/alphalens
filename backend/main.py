@@ -382,8 +382,8 @@ async def start_debate(request: Request, body: DebateRequest):
              print(f"Task {task_id} canceled.")
              if ACTIVE_TASKS[task_id].get("status") == "canceled":
                  _push_event({"type": "error", "message": "Analysis stopped by user."})
-             # We MUST re-raise to properly let wait_for trigger TimeoutError if it was instead a timeout
-             raise
+             # Exit cleanly without re-raising so the LLM socket closes gracefully
+             return
         except Exception as e:
              _push_event({"type": "error", "message": f"Fatal error: {str(e)}"})
              ACTIVE_TASKS[task_id]["status"] = "error"
