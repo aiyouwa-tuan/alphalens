@@ -18,6 +18,45 @@ function resolveAShareCode(query: string): string | null {
     return null;
 }
 
+// 常见热门中概股、A股、港股映射表（O(1) 极速拦截）
+const COMMON_CHINESE_STOCKS: Record<string, string> = {
+    '宁德时代': '300750.SZ',
+    '腾讯': '0700.HK',
+    '腾讯控股': '0700.HK',
+    '阿里': 'BABA',
+    '阿里巴巴': 'BABA',
+    '美团': '3690.HK',
+    '比亚迪': '002594.SZ',
+    '茅台': '600519.SS',
+    '贵州茅台': '600519.SS',
+    '拼多多': 'PDD',
+    '京东': 'JD',
+    '网易': 'NTES',
+    '百度': 'BIDU',
+    '小米': '1810.HK',
+    '理想': 'LI',
+    '蔚来': 'NIO',
+    '小鹏': 'XPEV',
+    '隆基': '601012.SS',
+    '隆基绿能': '601012.SS',
+    '五粮液': '000858.SZ',
+    '东方财富': '300059.SZ',
+    '工商银行': '601398.SS',
+    '招商银行': '600036.SS',
+    '迈瑞医疗': '300760.SZ',
+    '立讯精密': '002475.SZ',
+    '美的': '000333.SZ',
+    '美的集团': '000333.SZ',
+    '恒瑞医药': '600276.SS',
+    '苹果': 'AAPL',
+    '英伟达': 'NVDA',
+    '特斯拉': 'TSLA',
+    '微软': 'MSFT',
+    '谷歌': 'GOOGL',
+    '亚马逊': 'AMZN',
+    '脸书': 'META'
+};
+
 async function searchYahoo(q: string, lang: string): Promise<any[]> {
     try {
         const results: any = await yahooFinance.search(q, {
@@ -45,6 +84,20 @@ export async function GET(request: Request) {
     }
 
     try {
+        // 0. Pre-check common Chinese stocks (O(1) resolution)
+        const commonMatch = COMMON_CHINESE_STOCKS[rawQuery.trim()];
+        if (commonMatch) {
+            console.log(`[Fast Match] ${rawQuery} -> ${commonMatch}`);
+            return NextResponse.json({
+                results: [{
+                    symbol: commonMatch,
+                    name: rawQuery,
+                    type: 'EQUITY',
+                    exchange: 'Auto'
+                }]
+            });
+        }
+
         // 1. If input is a 6-digit A-share code, search with the exchange suffix directly
         const aShareSymbol = resolveAShareCode(rawQuery);
         const primaryQuery = aShareSymbol ?? rawQuery;

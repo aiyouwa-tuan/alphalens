@@ -615,6 +615,17 @@ export default function AnalysisPage() {
                 console.warn("Failed to resolve ticker via search API:", searchErr);
             }
 
+            // --- Explicit frontend validation ---
+            // If the resolved ticker STILL contains Chinese characters, it means search failed.
+            // Python backend will crash on it, so we stop here.
+            if (/[\u4e00-\u9fa5]/.test(resolvedTicker)) {
+                alert("抱歉，未能识别该股票名称。请直接输入标准股票代码 (如 300750.SZ, AAPL)。");
+                stopAnalyzing();
+                setActiveNode(null);
+                return;
+            }
+            // ------------------------------------
+
             const payload = {
                 ticker: resolvedTicker,
                 provider: "google",
@@ -1058,13 +1069,13 @@ export default function AnalysisPage() {
                                                         <div key={idx} className="flex gap-3">
                                                             <div className="flex-shrink-0 mt-0.5">
                                                                 <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${msg.node?.includes('Bull') ? 'bg-emerald-500' :
-                                                                        msg.node?.includes('Bear') ? 'bg-red-500' :
-                                                                            msg.node?.includes('Aggressive') ? 'bg-orange-500' :
-                                                                                msg.node?.includes('Conservative') ? 'bg-indigo-500' :
-                                                                                    msg.node?.includes('Neutral') ? 'bg-slate-500' :
-                                                                                        msg.node?.includes('Manager') || msg.node?.includes('Judge') ? 'bg-purple-500' :
-                                                                                            msg.node?.includes('Trader') ? 'bg-amber-500' :
-                                                                                                'bg-blue-500'
+                                                                    msg.node?.includes('Bear') ? 'bg-red-500' :
+                                                                        msg.node?.includes('Aggressive') ? 'bg-orange-500' :
+                                                                            msg.node?.includes('Conservative') ? 'bg-indigo-500' :
+                                                                                msg.node?.includes('Neutral') ? 'bg-slate-500' :
+                                                                                    msg.node?.includes('Manager') || msg.node?.includes('Judge') ? 'bg-purple-500' :
+                                                                                        msg.node?.includes('Trader') ? 'bg-amber-500' :
+                                                                                            'bg-blue-500'
                                                                     }`}>
                                                                     {msg.node?.charAt(0) || 'A'}
                                                                 </div>
