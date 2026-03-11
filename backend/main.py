@@ -171,7 +171,12 @@ async def start_debate(request: Request, body: DebateRequest):
     config = DEFAULT_CONFIG.copy()
     config["llm_provider"] = body.provider
     config["deep_think_llm"] = body.model
-    config["quick_think_llm"] = body.model
+    # DeepSeek-Reasoner (R1) does not support tool calling APIs, so we must fall back to deepseek-chat (V3) for quick_think_llm
+    if body.provider == "deepseek" and body.model == "deepseek-reasoner":
+        config["quick_think_llm"] = "deepseek-chat"
+    else:
+        config["quick_think_llm"] = body.model
+    
     config["max_debate_rounds"] = 1
     config["data_vendors"] = {
         "core_stock_apis": "yfinance",

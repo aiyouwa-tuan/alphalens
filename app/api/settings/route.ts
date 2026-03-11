@@ -64,7 +64,7 @@ export async function POST(request: Request) {
 
         if (error) {
             console.error('Error saving settings:', error);
-            return NextResponse.json({ error: 'Failed to save settings' }, { status: 500 });
+            return NextResponse.json({ error: `Failed to save settings: ${error.message || JSON.stringify(error)}` }, { status: 500 });
         }
 
         return NextResponse.json({ success: true, config: configValue });
