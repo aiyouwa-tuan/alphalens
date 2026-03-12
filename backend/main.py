@@ -69,16 +69,10 @@ def get_client_ip(request: Request) -> str:
 
 app = FastAPI(title="TradingAgents API")
 
-# Adjust CORS for Render & Next.js compatibility
+# Allow all origins for CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "https://www.neurynx.com",
-        "https://neurynx.com",
-        "https://alpha-lens-pi.vercel.app"
-    ],
-    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
