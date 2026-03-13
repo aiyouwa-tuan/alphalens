@@ -1,9 +1,6 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
 import './globals.css';
 import TopBar from '@/components/TopBar';
-
-const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'AlphaLens - Premium Stock Portfolio',
@@ -22,7 +19,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-[var(--bg-app)] text-[var(--text-primary)]`}>
+      <body className={`bg-[var(--bg-app)] text-[var(--text-primary)]`}>
         <LanguageProvider>
           <TelemetryTracker />
           <div className="flex flex-col min-h-screen">

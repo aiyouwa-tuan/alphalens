@@ -2,9 +2,12 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+function getSupabase() {
+    return createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+}
 
 const ADMIN_USER_ID = 'admin';
 
@@ -16,7 +19,7 @@ async function isAdminSession(): Promise<boolean> {
 
 export async function GET() {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await getSupabase()
             .from('system_settings')
             .select('config_value')
             .eq('key_name', 'ai_provider')
@@ -55,7 +58,7 @@ export async function POST(request: Request) {
 
         const configValue = { provider, model };
 
-        const { error } = await supabase
+        const { error } = await getSupabase()
             .from('system_settings')
             .upsert({
                 key_name: 'ai_provider',

@@ -13,9 +13,11 @@ import { createClient } from '@supabase/supabase-js';
 const ADMIN_USER_ID = 'admin';
 const ADMIN_SECRET_TOKEN = process.env.ADMIN_SECRET_TOKEN || 'alphalens-admin-secret-2026';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+function getSupabase() {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    return createClient(url, key);
+}
 
 async function isAdminSession(): Promise<boolean> {
     const cookieStore = await cookies();
@@ -32,6 +34,7 @@ export async function GET() {
         let globalModel = "gemini-3-pro-preview";
 
         try {
+            const supabase = getSupabase();
             const { data } = await supabase
                 .from('system_settings')
                 .select('config_value')
