@@ -7,6 +7,7 @@ export const translations = {
         analytics: "Analytics",
         portfolio: "Portfolio",
         news: "News",
+        sandbox: "Sandbox",
         settings: "Settings",
         logout: "Logout",
 
@@ -148,6 +149,7 @@ export const translations = {
         analytics: "分析",
         portfolio: "投资组合",
         news: "新闻",
+        sandbox: "沙盘",
         settings: "设置",
         logout: "退出登录",
 
