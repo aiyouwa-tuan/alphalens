@@ -12,6 +12,7 @@ import NewsFeedWidget from '@/components/NewsFeedWidget';
 import MacroWidget from '@/components/MacroWidget';
 import CryptoWidget from '@/components/CryptoWidget';
 import AIAnomalyAttribution from '@/components/AIAnomalyAttribution';
+import PositionSimulator from '@/components/PositionSimulator';
 
 // Types (Keep existing types)
 interface Holding {
@@ -136,16 +137,14 @@ export default function Dashboard() {
                         />
                     </div>
 
-                    {/* --- ROW 1.5: AI Anomaly Attribution + placeholder for future panels --- */}
+                    {/* --- ROW 1.5: AI Anomaly Attribution + Position Simulator --- */}
                     <div className="md:col-span-4 flex justify-start">
                         <AIAnomalyAttribution
                             onEnterSandbox={() => alert('Position Sandbox coming soon!')}
                         />
                     </div>
-                    <div className="md:col-span-8 bg-[var(--bg-panel)] border border-[var(--border-subtle)] flex items-center justify-center">
-                        <span className="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-widest">
-                            Chart / Order Entry Panel — Slot Reserved
-                        </span>
+                    <div className="md:col-span-8 flex">
+                        <PositionSimulator />
                     </div>
 
                     {/* --- ROW 2: Market News --- */}
