@@ -3,6 +3,11 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import yfinance as yf
 import os
+import socket
+
+# Enforce a global 15-second socket timeout so that yfinance never hangs the async loop infinitely.
+socket.setdefaulttimeout(15)
+
 from .stockstats_utils import StockstatsUtils
 
 def get_YFin_data_online(

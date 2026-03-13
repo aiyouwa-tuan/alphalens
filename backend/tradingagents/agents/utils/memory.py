@@ -25,10 +25,24 @@ class FinancialSituationMemory:
         self.documents: List[str] = []
         self.recommendations: List[str] = []
         self.bm25 = None
-        self.embeddings_model = GoogleGenerativeAIEmbeddings(
-            model="models/embedding-001",
-            max_retries=5
-        )
+        
+        # Check if Google API Key is available before trying to init embedder
+        import os
+        if os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY"):
+            try:
+                self.embeddings_model = GoogleGenerativeAIEmbeddings(
+                    model="models/embedding-001",
+                    max_retries=5
+                )
+                self.use_embeddings = True
+            except Exception as e:
+                print(f"Warning: Failed to initialize Google Embeddings ({e}), falling back to BM25-only.")
+                self.use_embeddings = False
+                self.embeddings_model = None
+        else:
+            self.use_embeddings = False
+            self.embeddings_model = None
+            
         self.document_embeddings: List[List[float]] = []
 
     def _tokenize(self, text: str) -> List[str]:
@@ -57,8 +71,14 @@ class FinancialSituationMemory:
         for situation, recommendation in situations_and_advice:
             self.documents.append(situation)
             self.recommendations.append(recommendation)
-            # Encode situation with Google GenAI Embeddings
-            self.document_embeddings.append(self.embeddings_model.embed_query(situation))
+            # Encode situation with Google GenAI Embeddings only if active
+            if self.use_embeddings and self.embeddings_model:
+                try:
+                    self.document_embeddings.append(self.embeddings_model.embed_query(situation))
+                except Exception:
+                    # In case of quota or network errors mid-stream
+                    self.use_embeddings = False
+                    self.document_embeddings.clear()
 
         # Rebuild BM25 index with new documents
         self._rebuild_index()
@@ -80,8 +100,32 @@ class FinancialSituationMemory:
         query_tokens = self._tokenize(current_situation)
         bm25_scores = self.bm25.get_scores(query_tokens)
 
+        # Fallback to straight BM25 sorting if embeddings aren't active
+        if not self.use_embeddings or not self.embeddings_model or len(self.document_embeddings) != len(self.documents):
+            top_indices = sorted(range(len(bm25_scores)), key=lambda i: bm25_scores[i], reverse=True)[:n_matches]
+            results = []
+            for idx in top_indices:
+                results.append({
+                    "matched_situation": self.documents[idx],
+                    "recommendation": self.recommendations[idx],
+                    "similarity_score": bm25_scores[idx] / (max(bm25_scores) if max(bm25_scores) > 0 else 1),
+                })
+            return results
+
         # Get query embedding for Semantic Search
-        query_embedding = self.embeddings_model.embed_query(current_situation)
+        try:
+            query_embedding = self.embeddings_model.embed_query(current_situation)
+        except Exception:
+            # Fallback to straight BM25 on error
+            top_indices = sorted(range(len(bm25_scores)), key=lambda i: bm25_scores[i], reverse=True)[:n_matches]
+            results = []
+            for idx in top_indices:
+                results.append({
+                    "matched_situation": self.documents[idx],
+                    "recommendation": self.recommendations[idx],
+                    "similarity_score": bm25_scores[idx] / (max(bm25_scores) if max(bm25_scores) > 0 else 1),
+                })
+            return results
 
         # Calculate semantic scores (cosine similarity)
         semantic_scores = []

@@ -6,7 +6,7 @@ from tradingagents.dataflows.config import get_config
 
 
 def create_news_analyst(llm):
-    async def news_analyst_node(state):
+    def news_analyst_node(state):
         current_date = state["trade_date"]
         ticker = state["company_of_interest"]
 
@@ -16,8 +16,7 @@ def create_news_analyst(llm):
         ]
 
         system_message = (
-            "You are a news researcher tasked with analyzing recent news and trends over the past week. Please write an extremely comprehensive and lengthy report (equivalent to 10-20 PDF pages) of the current state of the world that is relevant for trading and macroeconomics. Use the available tools: get_news(query, start_date, end_date) for company-specific or targeted news searches, and get_global_news(curr_date, look_back_days, limit) for broader macroeconomic news. Do not simply state the trends are mixed, provide detailed, academic-level, and finegrained analysis and insights that may help traders make decisions. Expand on every single data point."
-            + "\n\nCRITICAL LENGTH REQUIREMENT: Your output MUST be extremely detailed and long (around 10-20 pages if printed). Break down your analysis into multiple deep-dive sections, exploring macro contexts, micro metrics, socio-political impacts, and forward-looking projections in exhaustive detail."
+            "You are a news researcher tasked with analyzing recent news and trends over the past week. Please write a comprehensive report of the current state of the world that is relevant for trading and macroeconomics. Use the available tools: get_news(query, start_date, end_date) for company-specific or targeted news searches, and get_global_news(curr_date, look_back_days, limit) for broader macroeconomic news. Do not simply state the trends are mixed, provide detailed and finegrained analysis and insights that may help traders make decisions."
             + "\n\nIMPORTANT: ALL your thoughts, responses, and reports MUST be written in Chinese (简体中文). Make sure to append a Markdown table at the end of the report to organize key points in the report, organized and easy to read."
         )
 
@@ -43,9 +42,12 @@ def create_news_analyst(llm):
         prompt = prompt.partial(current_date=current_date)
         prompt = prompt.partial(ticker=ticker)
 
-        chain = prompt | llm.bind_tools(tools)
+        if getattr(llm, "_is_gemini_3", False):
+            chain = prompt | llm
+        else:
+            chain = prompt | llm.bind_tools(tools)
 
-        result = await chain.ainvoke(state["messages"])
+        result = chain.invoke(state["messages"])
 
         report = ""
 

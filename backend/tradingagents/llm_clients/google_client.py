@@ -52,14 +52,16 @@ class GoogleClient(BaseLLMClient):
             if key in self.kwargs:
                 target_key = "max_output_tokens" if key == "max_tokens" else key
                 llm_kwargs[target_key] = self.kwargs[key]
+                if key == "callbacks":
+                    llm_kwargs["streaming"] = True
 
         # Limit retries to avoid hanging for minutes on API failures
         if "max_retries" not in llm_kwargs:
             llm_kwargs["max_retries"] = 2
 
-        # Default per-call timeout: 90 seconds
+        # Default per-call timeout: 1800 seconds (30 minutes) for deep reasoning models
         if "timeout" not in llm_kwargs:
-            llm_kwargs["timeout"] = 90
+            llm_kwargs["timeout"] = 1800
 
         # Map thinking_level to appropriate API param based on model
         # Gemini 3 Pro: low, high

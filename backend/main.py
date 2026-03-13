@@ -69,15 +69,10 @@ def get_client_ip(request: Request) -> str:
 
 app = FastAPI(title="TradingAgents API")
 
-# Adjust CORS for Render & Next.js compatibility
+# Allow all origins for CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "https://www.neurynx.com",
-        "https://neurynx.com",
-        "https://alpha-lens-pi.vercel.app"
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -171,7 +166,15 @@ async def start_debate(request: Request, body: DebateRequest):
     config = DEFAULT_CONFIG.copy()
     config["llm_provider"] = body.provider
     config["deep_think_llm"] = body.model
-    config["quick_think_llm"] = body.model
+    # v1.2 original behavior: use the same model for both quick and deep thinking.
+    # The simple approach that worked reliably without 404 errors or model confusion.
+    provider = body.provider.lower()
+    if provider == "deepseek" and "reasoner" in body.model.lower():
+        # deepseek-reasoner doesn't support tool calling; use deepseek-chat for quick tasks
+        config["quick_think_llm"] = "deepseek-chat"
+    else:
+        config["quick_think_llm"] = body.model
+    
     config["max_debate_rounds"] = 1
     config["data_vendors"] = {
         "core_stock_apis": "yfinance",
@@ -186,6 +189,8 @@ async def start_debate(request: Request, body: DebateRequest):
             os.environ["GOOGLE_API_KEY"] = body.api_key
         elif body.provider == "doubao":
             os.environ["DOUBAO_API_KEY"] = body.api_key
+        elif body.provider == "deepseek":
+            os.environ["DEEPSEEK_API_KEY"] = body.api_key
 
     # Generate unique task ID
     task_id = str(uuid.uuid4())
@@ -194,7 +199,8 @@ async def start_debate(request: Request, body: DebateRequest):
     ACTIVE_TASKS[task_id] = {
         "events": [], # Store history for reconnections
         "queues": [], # List of client queues waiting for live updates
-        "status": "running"
+        "status": "running",
+        "task": None  # Will be set once asyncio task is created
     }
     
     # Push an event immediately
@@ -206,8 +212,8 @@ async def start_debate(request: Request, body: DebateRequest):
 
     _push_event({"type": "status", "message": f"Initializing AI Agents to analyze {ticker}..."})
 
-    # Global task timeout in seconds (5 minutes)
-    TASK_TIMEOUT = 300
+    # Global task timeout in seconds (30 minutes for slow reasoner models)
+    TASK_TIMEOUT = 1800
 
     # Background executor function
     async def graph_executor():
@@ -225,9 +231,21 @@ async def start_debate(request: Request, body: DebateRequest):
 
     async def _run_graph():
         try:
+            from langchain_core.callbacks import AsyncCallbackHandler
+            
+            class StreamingCallbackHandler(AsyncCallbackHandler):
+                async def on_llm_new_token(self, token: str, **kwargs) -> None:
+                    # Check if user pressed Stop — immediately abort mid-generation
+                    if ACTIVE_TASKS.get(task_id, {}).get("status") == "canceled":
+                        raise asyncio.CancelledError("User requested stop")
+                    # Push every generation token to the SSE queue immediately
+                    _push_event({"type": "token", "content": token})
+
             # 1. Initialize Graph synchronously in a background thread to prevent blocking FastAPI async loop
             def _init_graph():
-                graph = TradingAgentsGraph(debug=True, config=config)
+                # We instantiate the callback here and pass it
+                stream_handler = StreamingCallbackHandler()
+                graph = TradingAgentsGraph(debug=True, config=config, callbacks=[stream_handler])
                 initial_state = graph.propagator.create_initial_state(ticker, current_graph_date)
                 g_args = graph.propagator.get_graph_args()
                 return graph, initial_state, g_args
@@ -345,8 +363,10 @@ async def start_debate(request: Request, body: DebateRequest):
             
         except asyncio.CancelledError:
              print(f"Task {task_id} canceled.")
-             _push_event({"type": "error", "message": "Analysis stopped by user."})
-             ACTIVE_TASKS[task_id]["status"] = "canceled"
+             if ACTIVE_TASKS[task_id].get("status") == "canceled":
+                 _push_event({"type": "error", "message": "Analysis stopped by user."})
+             # Exit cleanly without re-raising so the LLM socket closes gracefully
+             return
         except Exception as e:
              _push_event({"type": "error", "message": f"Fatal error: {str(e)}"})
              ACTIVE_TASKS[task_id]["status"] = "error"
@@ -383,11 +403,15 @@ async def debate_stream(task_id: str):
         task_data["queues"].append(client_queue)
         try:
             while True:
-                # Wait for next live event pushed by graph_executor
-                event = await client_queue.get()
-                if event is None: # Sentinel value meaning task finished
-                    break
-                yield event
+                try:
+                    # Wait up to 15 seconds for a real event
+                    event = await asyncio.wait_for(client_queue.get(), timeout=15.0)
+                    if event is None: # Sentinel value meaning task finished
+                        break
+                    yield event
+                except asyncio.TimeoutError:
+                    # Send a keep-alive status event to prevent Render from dropping idle connections waiting on deep reasoning
+                    yield format_sse({"type": "status", "message": "深度思考中，请耐心等待..."})
         except asyncio.CancelledError:
             # The client closed the connection (page refresh, unmount)
             # Safe disconnection. The background task keeps running!

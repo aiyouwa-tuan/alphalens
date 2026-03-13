@@ -55,6 +55,11 @@ class OpenAIClient(BaseLLMClient):
             api_key = os.environ.get("OPENROUTER_API_KEY")
             if api_key:
                 llm_kwargs["api_key"] = api_key
+        elif self.provider == "deepseek":
+            llm_kwargs["base_url"] = "https://api.deepseek.com/v1"
+            api_key = self.kwargs.get("api_key") or os.environ.get("DEEPSEEK_API_KEY")
+            if api_key:
+                llm_kwargs["api_key"] = api_key
         elif self.provider == "doubao":
             api_key = self.kwargs.get("api_key") or os.environ.get("DOUBAO_API_KEY")
             if api_key:
@@ -68,6 +73,11 @@ class OpenAIClient(BaseLLMClient):
         for key in ("timeout", "max_retries", "reasoning_effort", "api_key", "callbacks"):
             if key in self.kwargs:
                 llm_kwargs[key] = self.kwargs[key]
+                if key == "callbacks":
+                    llm_kwargs["streaming"] = True
+
+        if "timeout" not in llm_kwargs:
+            llm_kwargs["timeout"] = 1800
 
         return UnifiedChatOpenAI(**llm_kwargs)
 

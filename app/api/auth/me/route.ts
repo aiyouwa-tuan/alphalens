@@ -7,18 +7,26 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@alphalens.local';
 export async function GET() {
     const cookieStore = await cookies();
     const userId = cookieStore.get('userId')?.value;
+    const isAdmin = cookieStore.get('isAdmin')?.value === '1';
 
     if (!userId) {
         return NextResponse.json({ user: null });
     }
 
-    const isAdmin = cookieStore.get('isAdmin')?.value === '1' && userId === ADMIN_USER_ID;
+    if (isAdmin && userId === ADMIN_USER_ID) {
+        return NextResponse.json({
+            user: {
+                id: 'admin',
+                email: ADMIN_EMAIL,
+                isAdmin: true
+            }
+        });
+    }
 
     return NextResponse.json({
         user: {
             id: userId,
-            email: isAdmin ? ADMIN_EMAIL : userId,
-            isAdmin,
+            isAdmin: false
         }
     });
 }

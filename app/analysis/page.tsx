@@ -160,11 +160,14 @@ export default function AnalysisPage() {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [messages, setMessages] = useState<AgentMessage[]>([]);
     const [activeNode, setActiveNode] = useState<string | null>(null);
+    const [streamingNode, setStreamingNode] = useState<string | null>(null);
+    const [streamingContent, setStreamingContent] = useState<string>("");
     const [finalDecision, setFinalDecision] = useState<string | null>(null); // Changed to state variable
     const [showThoughts, setShowThoughts] = useState(true); // New state variable
     const [isExportingPDF, setIsExportingPDF] = useState(false);
     const [analysisElapsed, setAnalysisElapsed] = useState(0); // seconds since analysis started
     const abortControllerRef = useRef<AbortController | null>(null);
+    const activeTaskIdRef = useRef<string | null>(null);
     const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     // Limit State (per-account)
@@ -257,9 +260,23 @@ export default function AnalysisPage() {
                     if (trimmedBlock.startsWith("data: ")) {
                         try {
                             const dataStr = trimmedBlock.replace(/^data:\s*/, "");
-                            const data = JSON.parse(dataStr) as AgentMessage;
+                            const data = JSON.parse(dataStr);
 
-                            setMessages((prev) => [...prev, data]);
+                            if (data.type === "token") {
+                                setStreamingNode(data.node || activeNode);
+                                setStreamingContent(prev => prev + (data.content || ""));
+                                continue;
+                            }
+
+                            if (data.type === "update" || data.type === "done" || data.type === "error") {
+                                // Node has finished its major update, clear stream
+                                if (data.node) {
+                                    setStreamingNode(null);
+                                    setStreamingContent("");
+                                }
+                            }
+
+                            setMessages((prev) => [...prev, data as AgentMessage]);
 
                             if (data.node) setActiveNode(data.node);
                             if (data.final_trade_decision) {
@@ -556,13 +573,43 @@ export default function AnalysisPage() {
     };
 
     const handleStop = () => {
+        // 1. Tell the backend to cancel the Python async graph task
+        const taskId = activeTaskIdRef.current;
+        if (taskId) {
+            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+            fetch(`${backendUrl}/api/debate/stop`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ task_id: taskId })
+            }).catch(err => console.error('Failed to stop backend task:', err));
+            activeTaskIdRef.current = null;
+        }
+        // 2. Close the SSE stream on the frontend side
         if (abortControllerRef.current) {
-            console.log("Aborting current fetch request...");
             abortControllerRef.current.abort();
             abortControllerRef.current = null;
         }
+
+        // 3. Aggressively clear UI state so it doesn't hang visually
         stopAnalyzing();
+        setActiveNode(null);
+        setStreamingNode(null);
+        setStreamingContent("");
+
+        // Mark current history item as canceled
+        setHistory(prev => {
+            const updated = prev.map(item =>
+                (item.status === 'running')
+                    ? { ...item, status: 'error' as const, endTime: new Date().toLocaleString('zh-CN', { hour12: false }) }
+                    : item
+            );
+            saveHistory(updated);
+            return updated;
+        });
+
+        setMessages((prev) => [...prev, { type: "error", message: "Analysis stopped by user." }]);
     };
+
     const handleAnalyze = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!ticker) return;
@@ -590,12 +637,16 @@ export default function AnalysisPage() {
         setAnalysisElapsed(0);
         setMessages([]);
         setActiveNode(null);
+        setStreamingNode(null);
+        setStreamingContent("");
         setFinalDecision(null);
         setShowThoughts(true);
         if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
         elapsedTimerRef.current = setInterval(() => setAnalysisElapsed(s => s + 1), 1000);
 
         const newHistoryId = Date.now().toString();
+
+        const originalTicker = ticker;
 
         try {
             let resolvedTicker = ticker.toUpperCase();
@@ -607,29 +658,54 @@ export default function AnalysisPage() {
                     const data = await searchRes.json();
                     if (data.results && data.results.length > 0) {
                         resolvedTicker = data.results[0].symbol;
-                        setTicker(resolvedTicker);
+                        // Do not overwrite the user's input box
+                        // setTicker(resolvedTicker); 
                     }
                 }
             } catch (searchErr) {
                 console.warn("Failed to resolve ticker via search API:", searchErr);
             }
 
+            // --- Explicit frontend validation ---
+            // If the resolved ticker STILL contains Chinese characters, it means search failed.
+            // Python backend will crash on it, so we stop here.
+            if (/[\u4e00-\u9fa5]/.test(resolvedTicker)) {
+                alert("抱歉，未能识别该股票名称。请直接输入标准股票代码 (如 300750.SZ, AAPL)。");
+                stopAnalyzing();
+                setActiveNode(null);
+                return;
+            }
+            // ------------------------------------
+
+            // 1. Fetch analysis configuration (provider, model, admin token) from Next.js proxy
+            //    This bypasses Vercel's 60s timeout limit by letting the browser wait directly on Render.
+            const prepRes = await fetch('/api/debate/prepare');
+            const prepData = await prepRes.json();
+
+            if (!prepRes.ok) throw new Error(prepData.error || "Failed to prepare config");
+
             const payload = {
                 ticker: resolvedTicker,
-                provider: "google",
-                model: "gemini-3-pro-preview",
-                api_key: ""
+                provider: prepData.provider || "google",
+                model: prepData.model || "gemini-3-pro-preview",
+                api_key: "",
+                ...(prepData.admin_token ? { admin_token: prepData.admin_token } : {})
             };
 
-            // 1. Kick off background task via server-side proxy.
-            //    The proxy injects the admin token when applicable (token stays server-side).
-            const startRes = await fetch('/api/debate/start', {
+            // 2. Kick off background task directly against the Python Backend
+            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+            const startRes = await fetch(`${backendUrl}/api/debate/start`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
             });
 
-            if (!startRes.ok) throw new Error("Failed to start task");
+            if (!startRes.ok) {
+                if (startRes.status >= 502 && startRes.status <= 504) {
+                    throw new Error(language === 'zh' ? "后台AI引擎正在唤醒中，已准备就绪，请重新点击“立即分析”！" : "Backend AI engine is waking up. Please click Analyze again!");
+                }
+                throw new Error("Failed to start task");
+            }
 
             const startData = await startRes.json();
             if (startData.error) {
@@ -639,13 +715,14 @@ export default function AnalysisPage() {
             }
 
             const remoteTaskId = startData.task_id;
+            activeTaskIdRef.current = remoteTaskId; // Store so handleStop can cancel it
 
             // 2. Log to history *after* getting real task id — save to API immediately
             const nowISO = new Date().toISOString();
             const newItem: AnalysisHistoryItem = {
                 id: newHistoryId,
                 taskId: remoteTaskId,
-                ticker: resolvedTicker,
+                ticker: originalTicker, // Keep the user's original input visible in history
                 startTime: nowISO,
                 timestamp: nowISO,
                 status: 'running' as const
@@ -665,7 +742,7 @@ export default function AnalysisPage() {
 
             // 3. Connect to the stream
             abortControllerRef.current = new AbortController();
-            await processStream(remoteTaskId, newHistoryId, resolvedTicker, abortControllerRef.current.signal);
+            await processStream(remoteTaskId, newHistoryId, originalTicker, abortControllerRef.current.signal);
 
         } catch (error: any) {
             if (error.name !== "AbortError") {
@@ -792,7 +869,7 @@ export default function AnalysisPage() {
                     </div>
 
                     {/* Sub Search row */}
-                    {!isAnalyzing && !finalDecision && (
+                    {!isAnalyzing && !messages.some(m => m.type === "error") && !finalDecision && (
                         <div className="flex flex-wrap items-center justify-center gap-4 md:gap-8 mt-6 md:mt-8 text-sm">
                             <div className="flex items-center gap-2">
                                 <span className="text-slate-400 font-medium mr-1 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Recent:</span>
@@ -864,7 +941,7 @@ export default function AnalysisPage() {
                     <div className="lg:col-span-9 flex flex-col gap-6">
 
                         {/* 3 Overview Cards - (Shown when idle matching Figma bottom half) */}
-                        {!isAnalyzing && !finalDecision && (
+                        {!isAnalyzing && !messages.some(m => m.type === "error") && !finalDecision && (
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div className="bg-white rounded-[20px] p-6 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
                                     <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center mb-5">
@@ -891,7 +968,7 @@ export default function AnalysisPage() {
                         )}
 
                         {/* Analysis Progress Pipeline */}
-                        {isAnalyzing && !finalDecision && (() => {
+                        {(isAnalyzing || messages.some(m => m.type === "error")) && !finalDecision && (() => {
                             // These match the actual LangGraph node names from the backend
                             const PHASES = [
                                 {
@@ -966,10 +1043,13 @@ export default function AnalysisPage() {
                                 return node;
                             };
 
+                            const hasError = messages.some(m => m.type === "error");
+                            const errorMsg = messages.find(m => m.type === "error")?.message;
+
                             return (
-                                <div className="anim-fade-scale bg-white rounded-[24px] border border-blue-100 shadow-xl shadow-blue-500/5 overflow-hidden">
+                                <div className={`anim-fade-scale bg-white rounded-[24px] border ${hasError ? 'border-red-200 shadow-red-500/5' : 'border-blue-100 shadow-blue-500/5'} shadow-xl overflow-hidden`}>
                                     {/* Header */}
-                                    <div className="px-6 pt-6 pb-4 border-b border-slate-100 bg-gradient-to-r from-blue-50/50 to-white">
+                                    <div className={`px-6 pt-6 pb-4 border-b border-slate-100 bg-gradient-to-r ${hasError ? 'from-red-50/50 to-white' : 'from-blue-50/50 to-white'}`}>
                                         <div className="flex items-center justify-between mb-3">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded-xl bg-[#0066FF] flex items-center justify-center shadow-lg shadow-blue-500/30">
@@ -979,8 +1059,8 @@ export default function AnalysisPage() {
                                                     <h3 className="text-lg font-bold text-slate-900">
                                                         {t("analyzingLabel")}{ticker}
                                                     </h3>
-                                                    <p className="text-xs text-slate-400 font-medium">
-                                                        {activeNode ? getNodeLabel(activeNode) : (language === 'zh' ? '正在启动分析引擎...' : 'Starting analysis engine...')}
+                                                    <p className={`text-xs font-medium ${hasError ? 'text-red-500' : 'text-slate-400'}`}>
+                                                        {hasError ? (language === 'zh' ? '分析任务异常中止' : 'Analysis Aborted') : (activeNode ? getNodeLabel(activeNode) : (language === 'zh' ? '正在启动分析引擎...' : 'Starting analysis engine...'))}
                                                     </p>
                                                 </div>
                                             </div>
@@ -997,11 +1077,10 @@ export default function AnalysisPage() {
                                                 </button>
                                             </div>
                                         </div>
-                                        {/* Progress Bar */}
                                         <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                                             <div
                                                 style={{ width: `${progress}%` }}
-                                                className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-700 ease-out"
+                                                className={`h-full ${hasError ? 'bg-red-500' : 'bg-gradient-to-r from-blue-500 to-blue-600'} rounded-full transition-all duration-700 ease-out`}
                                             />
                                         </div>
                                     </div>
@@ -1057,13 +1136,13 @@ export default function AnalysisPage() {
                                                         <div key={idx} className="flex gap-3">
                                                             <div className="flex-shrink-0 mt-0.5">
                                                                 <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${msg.node?.includes('Bull') ? 'bg-emerald-500' :
-                                                                        msg.node?.includes('Bear') ? 'bg-red-500' :
-                                                                            msg.node?.includes('Aggressive') ? 'bg-orange-500' :
-                                                                                msg.node?.includes('Conservative') ? 'bg-indigo-500' :
-                                                                                    msg.node?.includes('Neutral') ? 'bg-slate-500' :
-                                                                                        msg.node?.includes('Manager') || msg.node?.includes('Judge') ? 'bg-purple-500' :
-                                                                                            msg.node?.includes('Trader') ? 'bg-amber-500' :
-                                                                                                'bg-blue-500'
+                                                                    msg.node?.includes('Bear') ? 'bg-red-500' :
+                                                                        msg.node?.includes('Aggressive') ? 'bg-orange-500' :
+                                                                            msg.node?.includes('Conservative') ? 'bg-indigo-500' :
+                                                                                msg.node?.includes('Neutral') ? 'bg-slate-500' :
+                                                                                    msg.node?.includes('Manager') || msg.node?.includes('Judge') ? 'bg-purple-500' :
+                                                                                        msg.node?.includes('Trader') ? 'bg-amber-500' :
+                                                                                            'bg-blue-500'
                                                                     }`}>
                                                                     {msg.node?.charAt(0) || 'A'}
                                                                 </div>
@@ -1078,21 +1157,47 @@ export default function AnalysisPage() {
                                                             </div>
                                                         </div>
                                                     ))}
+
+                                                    {streamingNode && streamingContent && (
+                                                        <div className="flex gap-3">
+                                                            <div className="flex-shrink-0 mt-0.5">
+                                                                <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-blue-500 relative">
+                                                                    <span className="absolute w-full h-full rounded-full animate-ping bg-blue-400 opacity-20"></span>
+                                                                    {streamingNode.charAt(0) || 'A'}
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-[11px] font-bold text-blue-600 mb-0.5 flex items-center gap-1.5">
+                                                                    {getNodeLabel(streamingNode)}
+                                                                    <span className="text-[9px] px-1.5 py-0.5 bg-blue-50 text-blue-500 rounded-sm italic animate-pulse">
+                                                                        {language === 'zh' ? '深度推理中...' : 'Deep Reasoning...'}
+                                                                    </span>
+                                                                </p>
+                                                                <p className="text-xs text-slate-600 leading-relaxed max-h-[120px] overflow-y-auto whitespace-pre-wrap border border-blue-100 bg-blue-50/30 rounded-lg p-2 inner-shadow-sm font-mono tracking-tight">
+                                                                    {streamingContent}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
                                     )}
 
                                     {/* Footer Status */}
-                                    <div className="px-6 py-3 border-t border-slate-100 bg-slate-50/50">
+                                    <div className={`px-6 py-3 border-t ${hasError ? 'border-red-100 bg-red-50/50' : 'border-slate-100 bg-slate-50/50'}`}>
                                         <div className="flex items-center gap-2">
-                                            <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                                            <p className="text-xs text-slate-500 font-medium truncate flex-1">
-                                                {activeNode ? `${getNodeLabel(activeNode)} ${language === 'zh' ? '正在工作...' : 'is working...'}` : (language === 'zh' ? '正在初始化...' : 'Initializing...')}
+                                            {hasError ? (
+                                                <div className="w-2 h-2 rounded-full bg-red-500" />
+                                            ) : (
+                                                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                                            )}
+                                            <p className={`text-xs font-medium truncate flex-1 ${hasError ? 'text-red-600' : 'text-slate-500'}`}>
+                                                {hasError ? `Error: ${errorMsg}` : (activeNode ? `${getNodeLabel(activeNode)} ${language === 'zh' ? '正在工作...' : 'is working...'}` : (language === 'zh' ? '正在初始化...' : 'Initializing...'))}
                                             </p>
-                                            <span className={`text-[10px] font-medium tabular-nums ${analysisElapsed >= 240 ? 'text-amber-500 font-bold' : 'text-slate-400'}`}>
+                                            <span className={`text-[10px] font-medium tabular-nums ${analysisElapsed >= 1740 && !hasError ? 'text-amber-500 font-bold' : 'text-slate-400'}`}>
                                                 {Math.floor(analysisElapsed / 60)}:{String(analysisElapsed % 60).padStart(2, '0')}
-                                                {analysisElapsed >= 240 && (language === 'zh' ? ' 即将超时' : ' timeout soon')}
+                                                {analysisElapsed >= 1740 && !hasError && (language === 'zh' ? ' 即将超时' : ' timeout soon')}
                                             </span>
                                         </div>
                                     </div>

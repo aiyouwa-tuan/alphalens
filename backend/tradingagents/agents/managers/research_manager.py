@@ -30,8 +30,6 @@ Rationale: An extremely detailed explanation of why these arguments lead to your
 Strategic Actions: Concrete steps for implementing the recommendation.
 Take into account your past mistakes on similar situations. Use these insights to refine your decision-making and ensure you are learning and improving. Present your analysis as an incredibly comprehensive academic or professional investment memo.
 
-CRITICAL LENGTH REQUIREMENT: Your final output MUST be extremely detailed and long (equivalent to 10-20 PDF pages). Expand on EVERY point, include exhaustive context, detail the counter-arguments, explain the precise financial reasoning derived from the analysts, and do not summarize briefly. Do not write a short summary!
-
 Here are your past reflections on mistakes:
 \"{past_memory_str}\"
 

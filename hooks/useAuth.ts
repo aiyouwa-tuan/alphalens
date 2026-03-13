@@ -24,6 +24,15 @@ export function useAuth() {
         };
 
         const init = async () => {
+            // Check cookie-based session first (admin bypass)
+            const cookieUser = await fetchCookieUser();
+            if (cookieUser?.isAdmin) {
+                setUser(cookieUser);
+                setLoading(false);
+                return;
+            }
+
+            // Then check Supabase session
             if (client) {
                 const { data: { session } } = await client.auth.getSession();
                 if (session?.user) {
@@ -32,8 +41,7 @@ export function useAuth() {
                     return;
                 }
             }
-            // No Supabase session — check cookie-based session (e.g. admin login)
-            const cookieUser = await fetchCookieUser();
+
             setUser(cookieUser);
             setLoading(false);
         };
@@ -42,12 +50,10 @@ export function useAuth() {
 
         if (client) {
             const { data: { subscription } } = client.auth.onAuthStateChange((_event: any, session: any) => {
-                if (session?.user) {
-                    setUser(session.user);
-                } else {
-                    // Supabase signed out — re-check cookie session
-                    fetchCookieUser().then(cookieUser => setUser(cookieUser));
-                }
+                setUser((prevUser: any) => {
+                    if (prevUser?.isAdmin) return prevUser;
+                    return session?.user || null;
+                });
             });
             return () => subscription.unsubscribe();
         }
@@ -59,7 +65,7 @@ export function useAuth() {
             if (client) {
                 await client.auth.signOut();
             }
-            await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+            await fetch('/api/auth/logout', { method: 'POST' }).catch(() => { });
         } catch (e) {
             console.error("Logout error:", e);
         }

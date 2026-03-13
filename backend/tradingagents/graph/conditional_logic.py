@@ -15,7 +15,8 @@ class ConditionalLogic:
         """Determine if market analysis should continue."""
         messages = state["messages"]
         last_message = messages[-1]
-        if last_message.tool_calls:
+        tool_iterations = sum(1 for m in messages if hasattr(m, "tool_calls") and m.tool_calls)
+        if last_message.tool_calls and tool_iterations < 3:
             return "tools_market"
         return "Msg Clear Market"
 
@@ -23,7 +24,8 @@ class ConditionalLogic:
         """Determine if social media analysis should continue."""
         messages = state["messages"]
         last_message = messages[-1]
-        if last_message.tool_calls:
+        tool_iterations = sum(1 for m in messages if hasattr(m, "tool_calls") and m.tool_calls)
+        if last_message.tool_calls and tool_iterations < 3:
             return "tools_social"
         return "Msg Clear Social"
 
@@ -31,7 +33,8 @@ class ConditionalLogic:
         """Determine if news analysis should continue."""
         messages = state["messages"]
         last_message = messages[-1]
-        if last_message.tool_calls:
+        tool_iterations = sum(1 for m in messages if hasattr(m, "tool_calls") and m.tool_calls)
+        if last_message.tool_calls and tool_iterations < 3:
             return "tools_news"
         return "Msg Clear News"
 
@@ -39,7 +42,8 @@ class ConditionalLogic:
         """Determine if fundamentals analysis should continue."""
         messages = state["messages"]
         last_message = messages[-1]
-        if last_message.tool_calls:
+        tool_iterations = sum(1 for m in messages if hasattr(m, "tool_calls") and m.tool_calls)
+        if last_message.tool_calls and tool_iterations < 3:
             return "tools_fundamentals"
         return "Msg Clear Fundamentals"
 
