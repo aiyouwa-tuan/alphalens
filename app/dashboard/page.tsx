@@ -11,6 +11,7 @@ import MarketFlowWidget from '@/components/MarketFlowWidget';
 import NewsFeedWidget from '@/components/NewsFeedWidget';
 import MacroWidget from '@/components/MacroWidget';
 import CryptoWidget from '@/components/CryptoWidget';
+import AIAnomalyAttribution from '@/components/AIAnomalyAttribution';
 
 // Types (Keep existing types)
 interface Holding {
@@ -133,6 +134,18 @@ export default function Dashboard() {
                             title={t('blueChipsTech')}
                             items={marketData?.stocks?.slice(0, 5) || []}
                         />
+                    </div>
+
+                    {/* --- ROW 1.5: AI Anomaly Attribution + placeholder for future panels --- */}
+                    <div className="md:col-span-4 flex justify-start">
+                        <AIAnomalyAttribution
+                            onEnterSandbox={() => alert('Position Sandbox coming soon!')}
+                        />
+                    </div>
+                    <div className="md:col-span-8 bg-[var(--bg-panel)] border border-[var(--border-subtle)] flex items-center justify-center">
+                        <span className="font-mono text-[11px] text-[var(--text-dim)] uppercase tracking-widest">
+                            Chart / Order Entry Panel — Slot Reserved
+                        </span>
                     </div>
 
                     {/* --- ROW 2: Market News --- */}
