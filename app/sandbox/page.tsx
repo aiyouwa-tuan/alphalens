@@ -2,8 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
-    Search, TrendingUp, TrendingDown, AlertTriangle, RefreshCw,
-    Loader2, BarChart2, Calculator
+    Search, TrendingUp, TrendingDown, RefreshCw,
+    Loader2, BarChart2
 } from "lucide-react";
 import { useLanguage } from "@/components/LanguageProvider";
 
@@ -169,51 +169,63 @@ function AnomalyAttributionPanel({
 function PositionSimulatorPanel({ currentPrice }: { currentPrice: number }) {
     const [shares, setShares] = useState(500);
     const [avgCost, setAvgCost] = useState(185);
-    const [targetPrice, setTargetPrice] = useState(
+    const [mode, setMode] = useState<"buy" | "sell">("buy");
+
+    // Buy mode
+    const [buyPrice, setBuyPrice] = useState(
         currentPrice > 0 ? Math.round(currentPrice * 0.97) : 165
     );
-    const [additionalShares, setAdditionalShares] = useState(100);
-    const [washSale, setWashSale] = useState(false);
+    const [buyShares, setBuyShares] = useState(100);
 
-    // Sync targetPrice when currentPrice changes
+    // Sell mode
+    const [sellPrice, setSellPrice] = useState(
+        currentPrice > 0 ? currentPrice : 185
+    );
+    const [sellShares, setSellShares] = useState(100);
+
     useEffect(() => {
         if (currentPrice > 0) {
-            setTargetPrice(Math.round(currentPrice * 0.97));
+            setBuyPrice(Math.round(currentPrice * 0.97));
+            setSellPrice(Math.round(currentPrice * 100) / 100);
         }
     }, [currentPrice]);
 
     const price = currentPrice > 0 ? currentPrice : avgCost * 0.9;
-
-    // Calculations
     const unrealizedPnL = (price - avgCost) * shares;
     const unrealizedPct = avgCost > 0 ? ((price - avgCost) / avgCost) * 100 : 0;
 
-    const totalCost = shares * avgCost + additionalShares * targetPrice;
-    const totalShares = shares + additionalShares;
-    const newAvgCost = totalShares > 0 ? totalCost / totalShares : 0;
-    const requiredRebound =
-        price > 0 ? ((newAvgCost - price) / price) * 100 : 0;
-    const costReduction =
-        avgCost > 0 ? ((avgCost - newAvgCost) / avgCost) * 100 : 0;
+    // Buy calculations
+    const newTotalShares = shares + buyShares;
+    const newTotalCost = shares * avgCost + buyShares * buyPrice;
+    const newAvgCost = newTotalShares > 0 ? newTotalCost / newTotalShares : 0;
+    const costChange = avgCost > 0 ? ((newAvgCost - avgCost) / avgCost) * 100 : 0;
+    const reboundNeeded = price > 0 ? ((newAvgCost - price) / price) * 100 : 0;
+    const additionalInvestment = buyShares * buyPrice;
 
-    const fmtCurrency = (v: number) =>
+    // Sell calculations
+    const safeToSell = Math.min(sellShares, shares);
+    const realizedPnL = (sellPrice - avgCost) * safeToSell;
+    const realizedPct = avgCost > 0 ? ((sellPrice - avgCost) / avgCost) * 100 : 0;
+    const remainingShares = shares - safeToSell;
+    const remainingUnrealized = (price - avgCost) * remainingShares;
+    const proceeds = safeToSell * sellPrice;
+
+    const fmt = (v: number) =>
         new Intl.NumberFormat("en-US", {
             style: "currency",
             currency: "USD",
             minimumFractionDigits: 2,
         }).format(v);
 
-    const fmtPct = (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`;
-
-    const priceMin = Math.max(1, Math.round(price * 0.5));
-    const priceMax = Math.round(price * 1.2);
+    const pmin = Math.max(1, Math.round(price * 0.5));
+    const pmax = Math.round(price * 1.5);
 
     return (
         <div className="bg-[#0D1117] border border-[#21262D] rounded-2xl overflow-hidden flex flex-col h-full min-h-[420px]">
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-[#21262D]">
                 <p className="text-sm font-bold text-[#E6EDF3] tracking-wide">
-                    动态持仓沙盘 Simulator
+                    持仓模拟沙盘
                 </p>
                 <span className="text-[10px] font-mono text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded-full border border-blue-400/20">
                     INTERACTIVE
@@ -221,181 +233,210 @@ function PositionSimulatorPanel({ currentPrice }: { currentPrice: number }) {
             </div>
 
             <div className="flex-1 p-5 flex flex-col gap-4 overflow-y-auto">
-                {/* Wash Sale Warning */}
-                {washSale && (
-                    <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 flex gap-3">
-                        <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+
+                {/* Step 1: My Position */}
+                <div className="bg-[#161B22] border border-[#21262D] rounded-xl p-4">
+                    <p className="text-xs font-semibold text-[#8B949E] mb-3 flex items-center gap-1.5">
+                        <span className="w-4 h-4 rounded-full bg-[#58A6FF] text-[#0D1117] text-[9px] flex items-center justify-center font-bold">1</span>
+                        填入我的当前持仓
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <p className="text-sm font-semibold text-amber-400">
-                                Wash Sale Warning
+                            <label className="text-[10px] text-[#8B949E] mb-1 block">持股数量（股）</label>
+                            <input
+                                type="number"
+                                value={shares}
+                                onChange={(e) => setShares(Math.max(1, parseInt(e.target.value) || 1))}
+                                className="w-full bg-[#0D1117] border border-[#30363D] rounded-lg px-3 py-2 text-sm text-[#E6EDF3] font-mono focus:outline-none focus:border-[#58A6FF]"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-[10px] text-[#8B949E] mb-1 block">我的持仓均价（$）</label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                value={avgCost}
+                                onChange={(e) => setAvgCost(parseFloat(e.target.value) || 0)}
+                                className="w-full bg-[#0D1117] border border-[#30363D] rounded-lg px-3 py-2 text-sm text-[#E6EDF3] font-mono focus:outline-none focus:border-[#58A6FF]"
+                            />
+                        </div>
+                    </div>
+                    {/* Current P/L snapshot */}
+                    <div className="mt-3 flex items-center justify-between px-3 py-2 bg-[#0D1117] rounded-lg border border-[#21262D]">
+                        <span className="text-xs text-[#8B949E]">当前浮动盈亏</span>
+                        <div className="text-right">
+                            <span className={`text-sm font-bold font-mono ${unrealizedPnL >= 0 ? "text-green-400" : "text-red-400"}`}>
+                                {fmt(unrealizedPnL)}
+                            </span>
+                            <span className={`text-xs font-mono ml-2 ${unrealizedPct >= 0 ? "text-green-400" : "text-red-400"}`}>
+                                ({unrealizedPct >= 0 ? "+" : ""}{unrealizedPct.toFixed(2)}%)
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Step 2: Mode toggle */}
+                <div>
+                    <p className="text-xs font-semibold text-[#8B949E] mb-2 flex items-center gap-1.5">
+                        <span className="w-4 h-4 rounded-full bg-[#58A6FF] text-[#0D1117] text-[9px] flex items-center justify-center font-bold">2</span>
+                        选择操作类型
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                        <button
+                            onClick={() => setMode("buy")}
+                            className={`py-2.5 rounded-xl text-sm font-bold transition-all border ${
+                                mode === "buy"
+                                    ? "bg-green-500/20 text-green-400 border-green-500/40"
+                                    : "bg-[#161B22] text-[#8B949E] border-[#21262D] hover:border-[#30363D]"
+                            }`}
+                        >
+                            📈 加仓（补买）
+                        </button>
+                        <button
+                            onClick={() => setMode("sell")}
+                            className={`py-2.5 rounded-xl text-sm font-bold transition-all border ${
+                                mode === "sell"
+                                    ? "bg-red-500/20 text-red-400 border-red-500/40"
+                                    : "bg-[#161B22] text-[#8B949E] border-[#21262D] hover:border-[#30363D]"
+                            }`}
+                        >
+                            📉 减仓（卖出）
+                        </button>
+                    </div>
+                </div>
+
+                {/* Step 3: Params */}
+                <div className="bg-[#161B22] border border-[#21262D] rounded-xl p-4">
+                    <p className="text-xs font-semibold text-[#8B949E] mb-3 flex items-center gap-1.5">
+                        <span className="w-4 h-4 rounded-full bg-[#58A6FF] text-[#0D1117] text-[9px] flex items-center justify-center font-bold">3</span>
+                        {mode === "buy" ? "设定加仓参数" : "设定卖出参数"}
+                    </p>
+
+                    {mode === "buy" ? (
+                        <div className="space-y-4">
+                            <div>
+                                <div className="flex justify-between items-center mb-1">
+                                    <label className="text-xs text-[#8B949E]">打算以多少价格买入？</label>
+                                    <span className="text-sm font-bold font-mono text-green-400">${buyPrice.toFixed(2)}</span>
+                                </div>
+                                <input
+                                    type="range" min={pmin} max={pmax} step={0.5}
+                                    value={buyPrice}
+                                    onChange={(e) => setBuyPrice(parseFloat(e.target.value))}
+                                    className="w-full accent-green-500 cursor-pointer h-1.5"
+                                />
+                                <div className="flex justify-between text-[10px] text-[#484F58] mt-0.5">
+                                    <span>${pmin}</span><span>${pmax}</span>
+                                </div>
+                            </div>
+                            <div>
+                                <div className="flex justify-between items-center mb-1">
+                                    <label className="text-xs text-[#8B949E]">打算再买多少股？</label>
+                                    <input
+                                        type="number"
+                                        value={buyShares}
+                                        onChange={(e) => setBuyShares(Math.max(1, parseInt(e.target.value) || 1))}
+                                        className="w-20 bg-[#0D1117] border border-[#30363D] rounded px-2 py-0.5 text-xs text-[#E6EDF3] font-mono text-right focus:outline-none focus:border-[#58A6FF]"
+                                    />
+                                </div>
+                                <input
+                                    type="range" min={1} max={shares * 3} step={10}
+                                    value={buyShares}
+                                    onChange={(e) => setBuyShares(parseInt(e.target.value))}
+                                    className="w-full accent-green-500 cursor-pointer h-1.5"
+                                />
+                                <div className="flex justify-between text-[10px] text-[#484F58] mt-0.5">
+                                    <span>1股</span><span>{shares * 3}股</span>
+                                </div>
+                            </div>
+                            <div className="text-[10px] text-[#8B949E] text-right">
+                                本次需要投入：<span className="text-[#E6EDF3] font-mono font-bold">{fmt(additionalInvestment)}</span>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <div>
+                                <div className="flex justify-between items-center mb-1">
+                                    <label className="text-xs text-[#8B949E]">打算以多少价格卖出？</label>
+                                    <span className={`text-sm font-bold font-mono ${sellPrice >= avgCost ? "text-green-400" : "text-red-400"}`}>
+                                        ${sellPrice.toFixed(2)}
+                                    </span>
+                                </div>
+                                <input
+                                    type="range" min={pmin} max={pmax} step={0.5}
+                                    value={sellPrice}
+                                    onChange={(e) => setSellPrice(parseFloat(e.target.value))}
+                                    className={`w-full cursor-pointer h-1.5 ${sellPrice >= avgCost ? "accent-green-500" : "accent-red-500"}`}
+                                />
+                                <div className="flex justify-between text-[10px] text-[#484F58] mt-0.5">
+                                    <span>${pmin}</span>
+                                    <span className="text-[#8B949E]">均价 ${avgCost}</span>
+                                    <span>${pmax}</span>
+                                </div>
+                            </div>
+                            <div>
+                                <div className="flex justify-between items-center mb-1">
+                                    <label className="text-xs text-[#8B949E]">打算卖出多少股？</label>
+                                    <input
+                                        type="number"
+                                        value={sellShares}
+                                        onChange={(e) => setSellShares(Math.max(1, Math.min(shares, parseInt(e.target.value) || 1)))}
+                                        className="w-20 bg-[#0D1117] border border-[#30363D] rounded px-2 py-0.5 text-xs text-[#E6EDF3] font-mono text-right focus:outline-none focus:border-[#58A6FF]"
+                                    />
+                                </div>
+                                <input
+                                    type="range" min={1} max={shares} step={10}
+                                    value={Math.min(sellShares, shares)}
+                                    onChange={(e) => setSellShares(parseInt(e.target.value))}
+                                    className="w-full accent-red-500 cursor-pointer h-1.5"
+                                />
+                                <div className="flex justify-between text-[10px] text-[#484F58] mt-0.5">
+                                    <span>1股</span>
+                                    <span className="text-[#8B949E]">全仓 {shares}股</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Result */}
+                {mode === "buy" ? (
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-[#161B22] border border-green-500/20 rounded-xl p-3">
+                            <p className="text-[10px] text-[#8B949E] mb-1">加仓后新均价</p>
+                            <p className="text-xl font-mono font-bold text-[#E6EDF3]">{fmt(newAvgCost)}</p>
+                            <p className={`text-xs font-mono mt-0.5 ${costChange <= 0 ? "text-green-400" : "text-amber-400"}`}>
+                                {costChange <= 0 ? `↓ 摊低了 ${Math.abs(costChange).toFixed(1)}%` : `↑ 抬高了 ${costChange.toFixed(1)}%`}
                             </p>
-                            <p className="text-xs text-amber-300/80 leading-relaxed mt-0.5">
-                                您在过去 30 天内曾亏损平仓该股。高频做 T 将触发 IRS
-                                洗售规则，导致当前亏损不可抵税且成本基数将被重置。
+                        </div>
+                        <div className="bg-[#161B22] border border-[#21262D] rounded-xl p-3">
+                            <p className="text-[10px] text-[#8B949E] mb-1">回本还需涨</p>
+                            <p className={`text-xl font-mono font-bold ${reboundNeeded <= 0 ? "text-green-400" : "text-red-400"}`}>
+                                {reboundNeeded <= 0 ? "已回本 ✓" : `+${reboundNeeded.toFixed(2)}%`}
+                            </p>
+                            <p className="text-[10px] text-[#8B949E] mt-0.5">加仓后共持 {newTotalShares} 股</p>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className={`bg-[#161B22] border rounded-xl p-3 ${realizedPnL >= 0 ? "border-green-500/20" : "border-red-500/20"}`}>
+                            <p className="text-[10px] text-[#8B949E] mb-1">本次卖出{realizedPnL >= 0 ? "盈利" : "亏损"}</p>
+                            <p className={`text-xl font-mono font-bold ${realizedPnL >= 0 ? "text-green-400" : "text-red-400"}`}>
+                                {fmt(realizedPnL)}
+                            </p>
+                            <p className={`text-xs font-mono mt-0.5 ${realizedPct >= 0 ? "text-green-400" : "text-red-400"}`}>
+                                {realizedPct >= 0 ? "+" : ""}{realizedPct.toFixed(2)}% · 回款 {fmt(proceeds)}
+                            </p>
+                        </div>
+                        <div className="bg-[#161B22] border border-[#21262D] rounded-xl p-3">
+                            <p className="text-[10px] text-[#8B949E] mb-1">卖出后剩余持仓</p>
+                            <p className="text-xl font-mono font-bold text-[#E6EDF3]">{remainingShares} 股</p>
+                            <p className={`text-xs font-mono mt-0.5 ${remainingUnrealized >= 0 ? "text-green-400" : "text-red-400"}`}>
+                                浮动 {fmt(remainingUnrealized)}
                             </p>
                         </div>
                     </div>
                 )}
-
-                {/* Results Summary - Top */}
-                <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-[#161B22] border border-[#21262D] rounded-xl p-3">
-                        <p className="text-[10px] text-[#8B949E] mb-1">
-                            新均价 NEW AVG COST
-                        </p>
-                        <p className="text-2xl font-mono font-bold text-[#E6EDF3]">
-                            {fmtCurrency(newAvgCost)}
-                        </p>
-                        <p
-                            className={`text-xs font-mono mt-0.5 ${costReduction > 0 ? "text-green-400" : "text-red-400"}`}
-                        >
-                            {costReduction > 0 ? "↓" : "↑"} 较原均价{" "}
-                            {Math.abs(costReduction).toFixed(1)}%
-                        </p>
-                    </div>
-                    <div className="bg-[#161B22] border border-[#21262D] rounded-xl p-3">
-                        <p className="text-[10px] text-[#8B949E] mb-1">
-                            回本所需涨幅 REBOUND
-                        </p>
-                        <p
-                            className={`text-2xl font-mono font-bold ${requiredRebound <= 0 ? "text-green-400" : "text-red-400"}`}
-                        >
-                            {requiredRebound <= 0
-                                ? "已回本"
-                                : `+${requiredRebound.toFixed(2)}%`}
-                        </p>
-                    </div>
-                </div>
-
-                {/* Current / Simulate side by side */}
-                <div className="grid grid-cols-2 gap-3">
-                    {/* Current Position */}
-                    <div className="bg-[#161B22] border border-[#21262D] rounded-xl p-3">
-                        <p className="text-[10px] font-mono text-[#8B949E] uppercase tracking-wider mb-2">
-                            现状 CURRENT
-                        </p>
-                        <div className="space-y-2">
-                            <div className="flex justify-between">
-                                <span className="text-xs text-[#8B949E]">Shares</span>
-                                <input
-                                    type="number"
-                                    value={shares}
-                                    onChange={(e) =>
-                                        setShares(Math.max(1, parseInt(e.target.value) || 1))
-                                    }
-                                    className="w-20 bg-[#0D1117] border border-[#30363D] rounded px-2 py-0.5 text-xs text-[#E6EDF3] font-mono text-right focus:outline-none focus:border-[#58A6FF]"
-                                />
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-xs text-[#8B949E]">Avg Cost</span>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    value={avgCost}
-                                    onChange={(e) =>
-                                        setAvgCost(parseFloat(e.target.value) || 0)
-                                    }
-                                    className="w-20 bg-[#0D1117] border border-[#30363D] rounded px-2 py-0.5 text-xs text-[#E6EDF3] font-mono text-right focus:outline-none focus:border-[#58A6FF]"
-                                />
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-xs text-[#8B949E]">
-                                    Unrealized P/L
-                                </span>
-                                <span
-                                    className={`text-xs font-mono font-bold ${unrealizedPnL >= 0 ? "text-green-400" : "text-red-400"}`}
-                                >
-                                    {fmtCurrency(unrealizedPnL)}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Simulation Inputs */}
-                    <div className="bg-[#161B22] border border-[#21262D] rounded-xl p-3">
-                        <p className="text-[10px] font-mono text-[#8B949E] uppercase tracking-wider mb-2">
-                            推演 SIMULATE
-                        </p>
-                        <div className="space-y-2">
-                            <div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-xs text-[#8B949E]">
-                                        Target Buy Price
-                                    </span>
-                                    <span className="text-xs font-mono font-bold text-[#58A6FF]">
-                                        {fmtCurrency(targetPrice)}
-                                    </span>
-                                </div>
-                                <input
-                                    type="range"
-                                    min={priceMin}
-                                    max={priceMax}
-                                    step={0.5}
-                                    value={targetPrice}
-                                    onChange={(e) =>
-                                        setTargetPrice(parseFloat(e.target.value))
-                                    }
-                                    className="w-full accent-[#58A6FF] cursor-pointer h-1.5 mt-1"
-                                />
-                            </div>
-                            <div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-xs text-[#8B949E]">
-                                        Additional Shares
-                                    </span>
-                                    <input
-                                        type="number"
-                                        value={additionalShares}
-                                        onChange={(e) =>
-                                            setAdditionalShares(
-                                                Math.max(0, parseInt(e.target.value) || 0)
-                                            )
-                                        }
-                                        className="w-16 bg-[#0D1117] border border-[#30363D] rounded px-2 py-0.5 text-xs text-[#E6EDF3] font-mono text-right focus:outline-none focus:border-[#58A6FF]"
-                                    />
-                                </div>
-                                <input
-                                    type="range"
-                                    min={0}
-                                    max={shares * 2}
-                                    step={10}
-                                    value={additionalShares}
-                                    onChange={(e) =>
-                                        setAdditionalShares(parseInt(e.target.value))
-                                    }
-                                    className="w-full accent-[#58A6FF] cursor-pointer h-1.5 mt-1"
-                                />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Wash Sale Toggle */}
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <div className="relative">
-                        <input
-                            type="checkbox"
-                            checked={washSale}
-                            onChange={(e) => setWashSale(e.target.checked)}
-                            className="sr-only"
-                        />
-                        <div
-                            className={`w-9 h-5 rounded-full transition-colors ${washSale ? "bg-amber-500" : "bg-[#30363D]"}`}
-                        >
-                            <div
-                                className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${washSale ? "translate-x-4" : ""}`}
-                            />
-                        </div>
-                    </div>
-                    <span className="text-xs text-[#8B949E]">
-                        30天内有过亏损卖出 (Wash Sale)
-                    </span>
-                </label>
-
-                {/* Execute Button */}
-                <button className="w-full py-3 rounded-xl bg-[#00D4FF] hover:bg-[#00BFE6] text-[#0D1117] font-bold text-sm tracking-wider transition-colors">
-                    EXECUTE SIMULATED TRADE
-                </button>
             </div>
         </div>
     );
